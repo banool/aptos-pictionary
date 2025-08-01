@@ -365,7 +365,8 @@ module pictionary::pictionary {
         assert!(!game.finished, EGAME_FINISHED);
 
         // Select a random word
-        let word_list = borrow_global<WordList>(@pictionary);
+        let word_list_address = object::create_object_address(&@pictionary, b"WordList");
+        let word_list = borrow_global<WordList>(word_list_address);
         let word_index = randomness::u64_range(0, vector::length(&word_list.words));
         let word = *vector::borrow(&word_list.words, word_index);
 

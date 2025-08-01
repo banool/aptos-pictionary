@@ -4,11 +4,11 @@ echo "=== Aptos Pictionary Contract Deployment ==="
 
 # Check if account is funded
 echo "Checking account balance..."
-ACCOUNT="0xe38d50adbc666054d6860519e9870cbcb0b8949195e606511a99798c2ada1db2"
+ACCOUNT="0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f"
 echo "Account: $ACCOUNT"
 
 # Try to get balance - if account doesn't exist yet, it will return 0
-BALANCE=$(aptos account list --account $ACCOUNT 2>/dev/null | grep -o '"balance": "[0-9]*"' | grep -o '[0-9]*' || echo "0")
+BALANCE=$(aptos account balance --account $ACCOUNT 2>/dev/null | jq -r .Result[0].balance)
 if [ -z "$BALANCE" ]; then
     BALANCE="0"
 fi
@@ -27,7 +27,7 @@ echo "✅ Account has sufficient balance for deployment"
 # Compile the contract
 echo ""
 echo "Compiling contract..."
-aptos move compile --named-addresses pictionary=$ACCOUNT
+aptos move compile --named-addresses pictionary=default
 
 if [ $? -ne 0 ]; then
     echo "❌ Compilation failed"
@@ -39,7 +39,7 @@ echo "✅ Compilation successful"
 # Run tests
 echo ""
 echo "Running tests..."
-aptos move test --named-addresses pictionary=$ACCOUNT
+aptos move test
 
 if [ $? -ne 0 ]; then
     echo "❌ Tests failed"
@@ -51,7 +51,7 @@ echo "✅ All tests passed"
 # Deploy the contract
 echo ""
 echo "Deploying contract to testnet..."
-aptos move deploy-object --address-name pictionary --assume-yes
+aptos move publish --named-addresses pictionary=default --assume-yes
 
 if [ $? -ne 0 ]; then
     echo "❌ Deployment failed"
