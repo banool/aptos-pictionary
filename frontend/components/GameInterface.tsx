@@ -7,21 +7,13 @@ import { GameStatus } from "@/components/GameStatus";
 import { buildStartGamePayload, buildNextRoundPayload } from "@/entry-functions/gameActions";
 import { aptos } from "@/utils/aptos";
 import { getGame, getCurrentRound } from "@/view-functions/gameView";
-import { GameState } from "@/utils/surf";
+import { GameState, RoundState } from "@/utils/surf";
 
 interface GameInterfaceProps {
   gameAddress: AccountAddress;
 }
 
-interface RoundState {
-  roundNumber: number;
-  word: string;
-  startTime: number;
-  durationSeconds: number;
-  team0Guessed: boolean;
-  team1Guessed: boolean;
-  finished: boolean;
-}
+
 
 export function GameInterface({ gameAddress }: GameInterfaceProps) {
   const { account, connected, signAndSubmitTransaction } = useWallet();

@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Palette, Eraser } from "lucide-react";
+import { CanvasDelta } from "@/utils/surf";
 
 interface GameCanvasProps {
   gameAddress: string;
@@ -10,10 +11,7 @@ interface GameCanvasProps {
   userTeam: number | null;
 }
 
-interface CanvasDelta {
-  position: number;
-  color: number;
-}
+
 
 const COLORS = [
   { name: "Black", value: 0, hex: "#000000" },

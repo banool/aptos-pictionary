@@ -1,11 +1,9 @@
+import { APTOS_API_KEY } from "@/constants";
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
 // Initialize Aptos client for testnet with API key from Aptos Build
 const aptosConfig = new AptosConfig({
   network: Network.TESTNET,
-  clientConfig: {
-    API_KEY: import.meta.env.VITE_APTOS_API_KEY || "AG-JSPD2XGUVKASR9VYPD16BUXOYBFXY4JKS",
-  },
 });
 
 export const aptos = new Aptos(aptosConfig);
@@ -26,9 +24,6 @@ export const COLORS = [
   { name: "Pink", value: 8, hex: "#FFC0CB" },
   { name: "Brown", value: 9, hex: "#A52A2A" },
   { name: "Gray", value: 10, hex: "#808080" },
-  { name: "Light Blue", value: 11, hex: "#ADD8E6" },
-  { name: "Light Green", value: 12, hex: "#90EE90" },
-  { name: "Light Red", value: 13, hex: "#FFB6C1" },
 ] as const;
 
 export const getColorHex = (colorIndex: number): string => {

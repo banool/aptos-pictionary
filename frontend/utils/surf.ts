@@ -1,13 +1,32 @@
-import { createSurfClient } from "@thalalabs/surf";
+import { createSurfClient, DefaultABITable, ExtractStructType } from "@thalalabs/surf";
 import { Aptos, AccountAddress } from "@aptos-labs/ts-sdk";
 import { PICTIONARY_ABI } from "./abis";
+
+type ABITable = DefaultABITable & {
+    "0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f::pictionary": typeof PICTIONARY_ABI;
+  };
 
 // Create the Surf client instance with proper receiver-style API
 export const createPictionarySurfClient = (aptos: Aptos) => {
   return createSurfClient(aptos).useABI(PICTIONARY_ABI);
 };
 
-// Type definitions for our contract data
+// Extract raw struct types from the ABI
+export type RawGameState = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "Game">;
+export type RawRoundState = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "Round">;
+export type RawCanvasState = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "Canvas">;
+export type RawCanvasDelta = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "CanvasDelta">;
+export type RawColor = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "Color">;
+
+// Extract event types from the ABI
+export type GameCreatedEvent = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "GameCreated">;
+export type GameFinishedEvent = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "GameFinished">;
+export type RoundStartedEvent = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "RoundStarted">;
+export type RoundFinishedEvent = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "RoundFinished">;
+export type CanvasUpdatedEvent = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "CanvasUpdated">;
+export type GuessSubmittedEvent = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "GuessSubmitted">;
+
+// UI-friendly types (using AccountAddress and proper field names)
 export interface GameState {
   creator: AccountAddress;
   team0Players: AccountAddress[];
@@ -38,8 +57,14 @@ export interface RoundState {
   team1GuessTime: number | null;
 }
 
+export interface CanvasDelta {
+  position: number;
+  color: number;
+}
+
+// Simple canvas interface for UI rendering (position -> color mapping)
 export interface Canvas {
-  [position: number]: number; // position -> color mapping
+  [position: number]: number;
 }
 
 // OrderedMap structure as it appears in serialized form
@@ -63,7 +88,7 @@ export const parseOrderedMap = <K, V>(serializedMap: SerializedOrderedMap<K, V>)
   return map;
 };
 
-// Helper function to convert OrderedMap to Canvas format
+// Helper function to convert OrderedMap to Canvas format for UI rendering
 export const orderedMapToCanvas = (serializedMap: SerializedOrderedMap<number, number>): Canvas => {
   const canvas: Canvas = {};
   if (serializedMap?.entries) {
