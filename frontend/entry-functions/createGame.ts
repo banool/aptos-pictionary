@@ -1,9 +1,10 @@
-import { Account, Aptos } from "@aptos-labs/ts-sdk";
-import { PICTIONARY_MODULE_ADDRESS } from "@/constants";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
+import { createEntryPayload } from "@thalalabs/surf";
+import { PICTIONARY_ABI } from "@/utils/abis";
 
 export type CreateGameArguments = {
-  team0Players: string[];
-  team1Players: string[];
+  team0Players: AccountAddress[];
+  team1Players: AccountAddress[];
   targetScore: number;
   canvasWidth: number;
   canvasHeight: number;
@@ -11,40 +12,20 @@ export type CreateGameArguments = {
 };
 
 /**
- * Create a new Pictionary game
+ * Build payload for creating a new Pictionary game - Using Surf createEntryPayload
+ * Returns the transaction payload to be used with wallet adapter
  */
-export const createGame = async (
-  aptos: Aptos,
-  sender: Account,
-  args: CreateGameArguments
-): Promise<string> => {
-  const transaction = await aptos.transaction.build.simple({
-    sender: sender.accountAddress,
-    data: {
-      function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::create_game`,
-      functionArguments: [
-        args.team0Players,
-        args.team1Players,
-        args.targetScore,
-        args.canvasWidth,
-        args.canvasHeight,
-        args.roundDuration,
-      ],
-    },
+export const buildCreateGamePayload = (args: CreateGameArguments) => {
+  return createEntryPayload(PICTIONARY_ABI, {
+    function: "create_game",
+    functionArguments: [
+      args.team0Players.map((addr) => addr.toString()),
+      args.team1Players.map((addr) => addr.toString()),
+      args.targetScore,
+      args.canvasWidth,
+      args.canvasHeight,
+      args.roundDuration,
+    ],
+    typeArguments: [],
   });
-
-  const committedTransaction = await aptos.signAndSubmitTransaction({
-    signer: sender,
-    transaction,
-  });
-
-  const response = await aptos.waitForTransaction({
-    transactionHash: committedTransaction.hash,
-  });
-
-  console.log("Game created successfully:", response);
-
-  // TODO: Extract game address from events
-  // For now, return a mock address based on the contract
-  return PICTIONARY_MODULE_ADDRESS.slice(0, 10) + Math.random().toString(16).slice(2, 12);
 };

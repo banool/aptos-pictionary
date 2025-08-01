@@ -1,54 +1,12 @@
-import { Aptos, MoveValue } from "@aptos-labs/ts-sdk";
-import { PICTIONARY_MODULE_ADDRESS } from "@/constants";
-
-export interface GameState {
-  creator: string;
-  team0Players: string[];
-  team1Players: string[];
-  currentTeam0Artist: number;
-  currentTeam1Artist: number;
-  team0Score: number;
-  team1Score: number;
-  targetScore: number;
-  currentRound: number;
-  started: boolean;
-  finished: boolean;
-  winner: number | null;
-  canvasWidth: number;
-  canvasHeight: number;
-  roundDuration: number;
-}
-
-export interface RoundState {
-  roundNumber: number;
-  word: string;
-  startTime: number;
-  durationSeconds: number;
-  team0Guessed: boolean;
-  team1Guessed: boolean;
-  finished: boolean;
-  team0GuessTime: number | null;
-  team1GuessTime: number | null;
-}
-
-export interface Canvas {
-  [position: number]: number; // position -> color mapping
-}
+import { AccountAddress, Aptos } from "@aptos-labs/ts-sdk";
+import { createPictionarySurfClient, GameState, RoundState, Canvas, orderedMapToCanvas } from "@/utils/surf";
 
 /**
- * Get game state from the blockchain
+ * Get game state from the blockchain using Surf receiver-style API
  */
-export const getGame = async (
-  aptos: Aptos,
-  gameAddress: string
-): Promise<GameState> => {
+export const getGame = async (aptos: Aptos, gameAddress: AccountAddress): Promise<GameState> => {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::get_game`,
-        functionArguments: [gameAddress],
-      },
-    });
+    const client = createPictionarySurfClient(aptos);
 
     const [
       creator,
@@ -66,12 +24,15 @@ export const getGame = async (
       canvasWidth,
       canvasHeight,
       roundDuration,
-    ] = result as MoveValue[];
+    ] = await client.view.get_game({
+      functionArguments: [gameAddress.toString()],
+      typeArguments: [],
+    });
 
     return {
-      creator: creator as string,
-      team0Players: team0Players as string[],
-      team1Players: team1Players as string[],
+      creator: AccountAddress.from(creator as string),
+      team0Players: (team0Players as string[]).map((addr) => AccountAddress.from(addr)),
+      team1Players: (team1Players as string[]).map((addr) => AccountAddress.from(addr)),
       currentTeam0Artist: Number(currentTeam0Artist),
       currentTeam1Artist: Number(currentTeam1Artist),
       team0Score: Number(team0Score),
@@ -92,19 +53,11 @@ export const getGame = async (
 };
 
 /**
- * Get current round state from the blockchain
+ * Get current round state from the blockchain using Surf receiver-style API
  */
-export const getCurrentRound = async (
-  aptos: Aptos,
-  gameAddress: string
-): Promise<RoundState> => {
+export const getCurrentRound = async (aptos: Aptos, gameAddress: AccountAddress): Promise<RoundState> => {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::get_current_round`,
-        functionArguments: [gameAddress],
-      },
-    });
+    const client = createPictionarySurfClient(aptos);
 
     const [
       roundNumber,
@@ -116,7 +69,10 @@ export const getCurrentRound = async (
       finished,
       team0GuessTime,
       team1GuessTime,
-    ] = result as MoveValue[];
+    ] = await client.view.get_current_round({
+      functionArguments: [gameAddress.toString()],
+      typeArguments: [],
+    });
 
     return {
       roundNumber: Number(roundNumber),
@@ -136,33 +92,27 @@ export const getCurrentRound = async (
 };
 
 /**
- * Get canvas data for a specific round and team
+ * Get canvas data for a specific round and team using Surf receiver-style API
  */
 export const getCanvas = async (
   aptos: Aptos,
-  gameAddress: string,
+  gameAddress: AccountAddress,
   roundNumber: number,
-  team: number
+  team: number,
 ): Promise<Canvas> => {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::get_canvas`,
-        functionArguments: [gameAddress, roundNumber, team],
-      },
+    const client = createPictionarySurfClient(aptos);
+
+    // https://github.com/ThalaLabs/surf/issues/260
+    const orderedMapResult = await client.view.get_canvas({
+      functionArguments: [gameAddress.toString(), roundNumber, team],
+      typeArguments: [],
     });
 
-    // The result is a SimpleMap<u16, Color> which should be converted to a plain object
-    const canvasData = result[0] as { data: Array<{ key: string; value: number }> };
-    
-    const canvas: Canvas = {};
-    if (canvasData && canvasData.data) {
-      canvasData.data.forEach(({ key, value }) => {
-        canvas[Number(key)] = value;
-      });
-    }
-
-    return canvas;
+    // The result is an OrderedMap<u16, Color> serialized as { entries: Array<{ key: u16, value: Color }> }
+    // Surf returns the result as an array, so we need the first element
+    const canvasData = (orderedMapResult as unknown[])[0] as { entries: Array<{ key: number; value: number }> };
+    return orderedMapToCanvas(canvasData);
   } catch (error) {
     console.error("Failed to get canvas data:", error);
     throw new Error("Failed to fetch canvas data");

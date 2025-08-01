@@ -62,7 +62,7 @@ print_step "Checking Integration Configuration"
 echo "Checking if contract address is properly configured in frontend files..."
 
 # Check if the constant is defined
-if grep -q "PICTIONARY_MODULE_ADDRESS.*0xe38d50adbc666054d6860519e9870cbcb0b8949195e606511a99798c2ada1db2" frontend/constants.ts; then
+if grep -q "MODULE_ADDRESS.*0xe38d50adbc666054d6860519e9870cbcb0b8949195e606511a99798c2ada1db2" frontend/constants.ts; then
     print_success "Contract address constant properly defined in constants.ts"
 else
     print_error "Contract address constant not found or incorrect in constants.ts"
@@ -72,7 +72,7 @@ fi
 PLACEHOLDER_COUNT=$(grep -r "0x123" frontend/ | grep -v node_modules | wc -l)
 if [ "$PLACEHOLDER_COUNT" -gt 0 ]; then
     print_warning "Found $PLACEHOLDER_COUNT instances of placeholder address '0x123' in frontend"
-    echo "These should be updated to use PICTIONARY_MODULE_ADDRESS:"
+    echo "These should be updated to use MODULE_ADDRESS:"
     grep -r "0x123" frontend/ | grep -v node_modules
 else
     print_success "No placeholder addresses found in frontend"

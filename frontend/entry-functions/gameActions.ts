@@ -1,118 +1,52 @@
-import { Account, Aptos } from "@aptos-labs/ts-sdk";
-import { PICTIONARY_MODULE_ADDRESS } from "@/constants";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
+import { createEntryPayload } from "@thalalabs/surf";
+import { PICTIONARY_ABI } from "@/utils/abis";
 
 /**
- * Start a game (creator only)
+ * Build payload for starting a game (creator only)
  */
-export const startGame = async (
-  aptos: Aptos,
-  sender: Account,
-  gameAddress: string
-): Promise<void> => {
-  const transaction = await aptos.transaction.build.simple({
-    sender: sender.accountAddress,
-    data: {
-      function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::start_game`,
-      functionArguments: [gameAddress],
-    },
+export const buildStartGamePayload = (gameAddress: AccountAddress) => {
+  return createEntryPayload(PICTIONARY_ABI, {
+    function: "start_game",
+    functionArguments: [gameAddress.toString()],
+    typeArguments: [],
   });
-
-  const committedTransaction = await aptos.signAndSubmitTransaction({
-    signer: sender,
-    transaction,
-  });
-
-  await aptos.waitForTransaction({
-    transactionHash: committedTransaction.hash,
-  });
-
-  console.log("Game started successfully");
 };
 
 /**
- * Submit canvas drawing deltas
+ * Build payload for submitting canvas drawing deltas
  */
-export const submitCanvasDelta = async (
-  aptos: Aptos,
-  sender: Account,
-  gameAddress: string,
+export const buildSubmitCanvasDeltaPayload = (
+  gameAddress: AccountAddress,
   team: number,
   positions: number[],
-  colors: number[]
-): Promise<void> => {
-  const transaction = await aptos.transaction.build.simple({
-    sender: sender.accountAddress,
-    data: {
-      function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::submit_canvas_delta`,
-      functionArguments: [gameAddress, team, positions, colors],
-    },
+  colors: number[],
+) => {
+  return createEntryPayload(PICTIONARY_ABI, {
+    function: "submit_canvas_delta",
+    functionArguments: [gameAddress.toString(), team, positions, colors],
+    typeArguments: [],
   });
-
-  const committedTransaction = await aptos.signAndSubmitTransaction({
-    signer: sender,
-    transaction,
-  });
-
-  await aptos.waitForTransaction({
-    transactionHash: committedTransaction.hash,
-  });
-
-  console.log("Canvas delta submitted successfully");
 };
 
 /**
- * Make a guess
+ * Build payload for making a guess
  */
-export const makeGuess = async (
-  aptos: Aptos,
-  sender: Account,
-  gameAddress: string,
-  guess: string
-): Promise<void> => {
-  const transaction = await aptos.transaction.build.simple({
-    sender: sender.accountAddress,
-    data: {
-      function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::make_guess`,
-      functionArguments: [gameAddress, guess],
-    },
+export const buildMakeGuessPayload = (gameAddress: AccountAddress, guess: string) => {
+  return createEntryPayload(PICTIONARY_ABI, {
+    function: "make_guess",
+    functionArguments: [gameAddress.toString(), guess],
+    typeArguments: [],
   });
-
-  const committedTransaction = await aptos.signAndSubmitTransaction({
-    signer: sender,
-    transaction,
-  });
-
-  await aptos.waitForTransaction({
-    transactionHash: committedTransaction.hash,
-  });
-
-  console.log("Guess submitted successfully");
 };
 
 /**
- * Start next round (artist only)
+ * Build payload for starting the next round (artist only)
  */
-export const nextRound = async (
-  aptos: Aptos,
-  sender: Account,
-  gameAddress: string
-): Promise<void> => {
-  const transaction = await aptos.transaction.build.simple({
-    sender: sender.accountAddress,
-    data: {
-      function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::next_round`,
-      functionArguments: [gameAddress],
-    },
+export const buildNextRoundPayload = (gameAddress: AccountAddress) => {
+  return createEntryPayload(PICTIONARY_ABI, {
+    function: "next_round",
+    functionArguments: [gameAddress.toString()],
+    typeArguments: [],
   });
-
-  const committedTransaction = await aptos.signAndSubmitTransaction({
-    signer: sender,
-    transaction,
-  });
-
-  await aptos.waitForTransaction({
-    transactionHash: committedTransaction.hash,
-  });
-
-  console.log("Next round started successfully");
 };

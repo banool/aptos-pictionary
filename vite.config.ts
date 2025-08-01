@@ -12,4 +12,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./frontend"),
     },
   },
+  define: {
+    global: "globalThis",
+  },
+  optimizeDeps: {
+    include: ["buffer"],
+  },
 });

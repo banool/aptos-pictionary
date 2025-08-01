@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
 import { Button } from "@/components/ui/button";
 import { Play, SkipForward, Clock } from "lucide-react";
 
 interface GameStatusProps {
   gameState: {
-    creator: string;
+    creator: AccountAddress;
     started: boolean;
     finished: boolean;
     currentRound: number;
@@ -90,7 +91,7 @@ export function GameStatus({
     return "Guess what's being drawn!";
   };
 
-  const canStartGame = gameState.creator === account?.address?.toString() && !gameState.started;
+  const canStartGame = gameState.creator.toString() === account?.address?.toString() && !gameState.started;
   const canStartNextRound = isCurrentArtist && roundState?.finished;
 
   return (

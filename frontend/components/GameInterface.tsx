@@ -1,32 +1,16 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
 import { GameCanvas } from "@/components/GameCanvas";
 import { GameSidebar } from "@/components/GameSidebar";
 import { GameStatus } from "@/components/GameStatus";
-import { PICTIONARY_MODULE_ADDRESS } from "@/constants";
+import { buildStartGamePayload, buildNextRoundPayload } from "@/entry-functions/gameActions";
 import { aptos } from "@/utils/aptos";
 import { getGame, getCurrentRound } from "@/view-functions/gameView";
+import { GameState } from "@/utils/surf";
 
 interface GameInterfaceProps {
-  gameAddress: string;
-}
-
-interface GameState {
-  creator: string;
-  team0Players: string[];
-  team1Players: string[];
-  currentTeam0Artist: number;
-  currentTeam1Artist: number;
-  team0Score: number;
-  team1Score: number;
-  targetScore: number;
-  currentRound: number;
-  started: boolean;
-  finished: boolean;
-  winner: number | null;
-  canvasWidth: number;
-  canvasHeight: number;
-  roundDuration: number;
+  gameAddress: AccountAddress;
 }
 
 interface RoundState {
@@ -43,6 +27,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
   const { account, connected, signAndSubmitTransaction } = useWallet();
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
+  const [ansNames, setAnsNames] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,40 +45,9 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
         setError(null);
       } catch (err) {
         console.error("Failed to load game state:", err);
-        // Fall back to mock data for development/testing
-        console.log("Falling back to mock data for development");
-        
-        const mockGameState: GameState = {
-          creator: account?.address?.toString() || PICTIONARY_MODULE_ADDRESS,
-          team0Players: [account?.address?.toString() || PICTIONARY_MODULE_ADDRESS, PICTIONARY_MODULE_ADDRESS.slice(0, 6) + "789"],
-          team1Players: [PICTIONARY_MODULE_ADDRESS.slice(0, 6) + "abc", PICTIONARY_MODULE_ADDRESS.slice(0, 6) + "def"],
-          currentTeam0Artist: 0,
-          currentTeam1Artist: 0,
-          team0Score: 2,
-          team1Score: 4,
-          targetScore: 11,
-          currentRound: 3,
-          started: true,
-          finished: false,
-          winner: null,
-          canvasWidth: 500,
-          canvasHeight: 500,
-          roundDuration: 30,
-        };
-
-        const mockRoundState: RoundState = {
-          roundNumber: 2,
-          word: "", // Hidden until round ends
-          startTime: Date.now() / 1000,
-          durationSeconds: 30,
-          team0Guessed: false,
-          team1Guessed: false,
-          finished: false,
-        };
-
-        setGameState(mockGameState);
-        setRoundState(mockRoundState);
-        setError(null);
+        setError(err instanceof Error ? err.message : "Failed to load game state");
+        setGameState(null);
+        setRoundState(null);
       } finally {
         setLoading(false);
       }
@@ -104,12 +58,58 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     }
   }, [connected, gameAddress, account]);
 
+  // Function to resolve account addresses to ANS names
+  const resolveAnsNames = async (addresses: AccountAddress[]) => {
+    const newAnsNames: Record<string, string | null> = {};
+    
+    for (const address of addresses) {
+      const addressStr = address.toString();
+      if (!ansNames[addressStr]) {
+        try {
+          const ansName = await aptos.ans.getPrimaryName({ address: addressStr });
+          newAnsNames[addressStr] = ansName || null;
+        } catch (err) {
+          console.log(`No ANS name found for address: ${addressStr}`);
+          newAnsNames[addressStr] = null;
+        }
+      }
+    }
+    
+    if (Object.keys(newAnsNames).length > 0) {
+      setAnsNames(prev => ({ ...prev, ...newAnsNames }));
+    }
+  };
+
+  // Resolve ANS names when game state changes
+  useEffect(() => {
+    if (gameState) {
+      const allAddresses = [
+        gameState.creator,
+        ...gameState.team0Players,
+        ...gameState.team1Players
+      ];
+      resolveAnsNames(allAddresses);
+    }
+  }, [gameState]);
+
   const getUserTeam = (): number | null => {
     if (!account || !gameState) return null;
     
-    if (gameState.team0Players.includes(account.address.toString())) return 0;
-    if (gameState.team1Players.includes(account.address.toString())) return 1;
+    const userAddress = account.address.toString();
+    if (gameState.team0Players.some(addr => addr.toString() === userAddress)) return 0;
+    if (gameState.team1Players.some(addr => addr.toString() === userAddress)) return 1;
     return null;
+  };
+
+  // Helper function to get display name (ANS name or truncated address)
+  const getDisplayName = (address: AccountAddress): string => {
+    const addressStr = address.toString();
+    const ansName = ansNames[addressStr];
+    if (ansName) {
+      return ansName;
+    }
+    // Return truncated address as fallback
+    return `${addressStr.slice(0, 6)}...${addressStr.slice(-4)}`;
   };
 
   const isCurrentArtist = (): boolean => {
@@ -118,10 +118,11 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     const userTeam = getUserTeam();
     if (userTeam === null) return false;
     
+    const userAddress = account.address.toString();
     if (userTeam === 0) {
-      return gameState.team0Players[gameState.currentTeam0Artist] === account.address.toString();
+      return gameState.team0Players[gameState.currentTeam0Artist].toString() === userAddress;
     } else {
-      return gameState.team1Players[gameState.currentTeam1Artist] === account.address.toString();
+      return gameState.team1Players[gameState.currentTeam1Artist].toString() === userAddress;
     }
   };
 
@@ -132,12 +133,11 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     }
 
     try {
+      const payload = buildStartGamePayload(gameAddress);
+      
       await signAndSubmitTransaction({
         sender: account.address,
-        data: {
-          function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::start_game`,
-          functionArguments: [gameAddress],
-        },
+        data: payload,
       });
 
       // Reload game state after starting
@@ -155,12 +155,11 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     }
 
     try {
+      const payload = buildNextRoundPayload(gameAddress);
+      
       await signAndSubmitTransaction({
         sender: account.address,
-        data: {
-          function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::next_round`,
-          functionArguments: [gameAddress],
-        },
+        data: payload,
       });
 
       // Reload game state after starting next round
@@ -224,7 +223,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
         
         <div className="flex-1 flex items-center justify-center p-4">
           <GameCanvas
-            gameAddress={gameAddress}
+            gameAddress={gameAddress.toString()}
             width={gameState.canvasWidth}
             height={gameState.canvasHeight}
             canDraw={isCurrentArtist() && gameState.started && !gameState.finished}
@@ -238,6 +237,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
         gameState={gameState}
         roundState={roundState}
         userTeam={getUserTeam()}
+        getDisplayName={getDisplayName}
       />
     </div>
   );

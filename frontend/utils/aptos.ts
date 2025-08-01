@@ -1,7 +1,7 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
 // Initialize Aptos client for testnet with API key from Aptos Build
-const aptosConfig = new AptosConfig({ 
+const aptosConfig = new AptosConfig({
   network: Network.TESTNET,
   clientConfig: {
     API_KEY: import.meta.env.VITE_APTOS_API_KEY || "AG-JSPD2XGUVKASR9VYPD16BUXOYBFXY4JKS",

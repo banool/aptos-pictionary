@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
 
 interface GameSidebarProps {
   gameState: {
-    team0Players: string[];
-    team1Players: string[];
+    team0Players: AccountAddress[];
+    team1Players: AccountAddress[];
     team0Score: number;
     team1Score: number;
     targetScore: number;
@@ -21,6 +22,7 @@ interface GameSidebarProps {
     team1Guessed: boolean;
   } | null;
   userTeam: number | null;
+  getDisplayName?: (address: AccountAddress) => string;
 }
 
 interface RoundResult {
@@ -32,7 +34,7 @@ interface RoundResult {
   team1TotalScore: number;
 }
 
-export function GameSidebar({ gameState, roundState, userTeam }: GameSidebarProps) {
+export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }: GameSidebarProps) {
   const [guess, setGuess] = useState("");
   const [roundResults] = useState<RoundResult[]>([
     {
@@ -75,6 +77,10 @@ export function GameSidebar({ gameState, roundState, userTeam }: GameSidebarProp
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const getPlayerDisplayName = (player: AccountAddress) => {
+    return getDisplayName ? getDisplayName(player) : formatAddress(player.toString());
+  };
+
   return (
     <div className="w-80 border-l bg-gray-50 flex flex-col">
       {/* Game Info Header */}
@@ -104,8 +110,8 @@ export function GameSidebar({ gameState, roundState, userTeam }: GameSidebarProp
           </div>
           <div className="space-y-1">
             {gameState.team0Players.map((player, index) => (
-              <div key={player} className="text-xs text-gray-600">
-                {formatAddress(player)}
+              <div key={player.toString()} className="text-xs text-gray-600">
+                {getPlayerDisplayName(player)}
                 {index === 0 && <span className="ml-2 text-blue-600">👨‍🎨</span>}
               </div>
             ))}
@@ -123,8 +129,8 @@ export function GameSidebar({ gameState, roundState, userTeam }: GameSidebarProp
           </div>
           <div className="space-y-1">
             {gameState.team1Players.map((player, index) => (
-              <div key={player} className="text-xs text-gray-600">
-                {formatAddress(player)}
+              <div key={player.toString()} className="text-xs text-gray-600">
+                {getPlayerDisplayName(player)}
                 {index === 0 && <span className="ml-2 text-red-600">👨‍🎨</span>}
               </div>
             ))}

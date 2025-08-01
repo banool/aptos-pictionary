@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { AccountAddress, TransactionResponseType } from "@aptos-labs/ts-sdk";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +12,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Minus } from "lucide-react";
+import { buildCreateGamePayload } from "@/entry-functions/createGame";
 import { aptos } from "@/utils/aptos";
-import { PICTIONARY_MODULE_ADDRESS } from "@/constants";
+import { MODULE_ADDRESS } from "@/constants";
 
 interface CreateGameModalProps {
   open: boolean;
   onClose: () => void;
-  onGameCreated: (gameAddress: string) => void;
+  onGameCreated: (gameAddress: AccountAddress) => void;
 }
 
 interface PlayerInput {
@@ -74,56 +76,108 @@ export function CreateGameModal({
     );
   };
 
+  // Helper function to resolve addresses (ANS names or regular addresses)
+  const resolveAddress = async (addressOrName: string): Promise<string> => {
+    const trimmed = addressOrName.trim();
+    
+    // Check if it's an ANS name (ends with .apt)
+    if (trimmed.endsWith('.apt')) {
+      try {
+        const targetAddress = await aptos.ans.getTargetAddress({ name: trimmed });
+        if (!targetAddress) {
+          throw new Error(`ANS name not found: ${trimmed}`);
+        }
+        return targetAddress.toString();
+      } catch (error) {
+        throw new Error(`Failed to resolve ANS name "${trimmed}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    
+    // Regular address validation using AccountAddress.isValid
+    let result = AccountAddress.isValid({ input: trimmed });
+    if (!result.valid) {
+      throw new Error(`Invalid address format: ${trimmed} ${result.invalidReasonMessage}`);
+    }
+    
+    return trimmed;
+  };
+
   const handleCreateGame = async () => {
     if (!account) return;
 
     setIsLoading(true);
     try {
-      // Validate that all players have addresses
-      const team0Addresses = team0Players.map(p => p.address.trim()).filter(addr => addr);
-      const team1Addresses = team1Players.map(p => p.address.trim()).filter(addr => addr);
+      // Validate that all players have addresses or ANS names
+      const team0AddressInputs = team0Players.map(p => p.address.trim()).filter(addr => addr);
+      const team1AddressInputs = team1Players.map(p => p.address.trim()).filter(addr => addr);
 
-      if (team0Addresses.length < 2 || team1Addresses.length < 2) {
-        alert("Each team must have at least 2 players with valid addresses");
+      if (team0AddressInputs.length < 2 || team1AddressInputs.length < 2) {
+        alert("Each team must have at least 2 players with valid addresses or ANS names");
         return;
       }
 
-      // Validate address format (basic check)
-      const addressRegex = /^0x[a-fA-F0-9]{1,64}$/;
-      const allAddresses = [...team0Addresses, ...team1Addresses];
-      for (const addr of allAddresses) {
-        if (!addressRegex.test(addr)) {
-          alert(`Invalid address format: ${addr}`);
-          return;
+      // Resolve all addresses (including ANS names)
+      const team0Addresses: string[] = [];
+      const team1Addresses: string[] = [];
+
+      try {
+        // Resolve team 0 addresses
+        for (const addressInput of team0AddressInputs) {
+          const resolvedAddress = await resolveAddress(addressInput);
+          team0Addresses.push(resolvedAddress);
         }
+
+        // Resolve team 1 addresses
+        for (const addressInput of team1AddressInputs) {
+          const resolvedAddress = await resolveAddress(addressInput);
+          team1Addresses.push(resolvedAddress);
+        }
+      } catch (error) {
+        alert(`Address resolution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return;
       }
 
-      // Call the smart contract to create the game
-      const response = await signAndSubmitTransaction({
-        sender: account.address,
-        data: {
-          function: `${PICTIONARY_MODULE_ADDRESS}::pictionary::create_game`,
-          functionArguments: [
-            team0Addresses,
-            team1Addresses,
-            parseInt(targetScore),
-            parseInt(canvasSize),
-            parseInt(canvasSize),
-            parseInt(roundDuration),
-          ],
-        },
+      // Convert string addresses to AccountAddress objects
+      const team0AccountAddresses = team0Addresses.map(addr => AccountAddress.from(addr));
+      const team1AccountAddresses = team1Addresses.map(addr => AccountAddress.from(addr));
+
+      // Build the transaction payload
+      const payload = buildCreateGamePayload({
+        team0Players: team0AccountAddresses,
+        team1Players: team1AccountAddresses,
+        targetScore: parseInt(targetScore),
+        canvasWidth: parseInt(canvasSize),
+        canvasHeight: parseInt(canvasSize),
+        roundDuration: parseInt(roundDuration),
       });
 
+      // Submit transaction using wallet adapter
+      const response = await signAndSubmitTransaction({
+        sender: account.address,
+        data: payload,
+      });
+
+      // Wait for transaction to be processed
       const gameResult = await aptos.waitForTransaction({
         transactionHash: response.hash,
       });
 
-      console.log("Game created successfully:", gameResult);
+      if (gameResult.type !== TransactionResponseType.User) {
+        throw new Error("Transaction failed");
+      }
 
-      // TODO: Extract actual game address from events
-      // For now, use a mock address based on transaction hash
-      const gameAddress = PICTIONARY_MODULE_ADDRESS.slice(0, 10) + response.hash.slice(2, 12);
-      
+      console.log(gameResult.events);
+
+      const gameCreatedEvent = gameResult.events.find(event => event.type === `${MODULE_ADDRESS}::pictionary::GameCreated`);
+      if (!gameCreatedEvent) {
+        throw new Error("Game created event not found");
+      }
+
+      const gameAddress = gameCreatedEvent.data.game_address;
+      if (!gameAddress) {
+        throw new Error("Game address not found in events");
+      }
+
       onGameCreated(gameAddress);
     } catch (error) {
       console.error("Failed to create game:", error);

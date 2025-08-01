@@ -5,11 +5,11 @@ This guide walks you through deploying and testing the complete Aptos Pictionary
 ## 🚀 Quick Deploy
 
 ### 1. Fund the Deployment Account
-The deployment account has been created: `0xe38d50adbc666054d6860519e9870cbcb0b8949195e606511a99798c2ada1db2`
+The deployment account has been created: `0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f`
 
 **Visit the testnet faucet to fund it:**
 ```
-https://aptos.dev/network/faucet?address=0xe38d50adbc666054d6860519e9870cbcb0b8949195e606511a99798c2ada1db2
+https://aptos.dev/network/faucet?address=0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f
 ```
 
 ### 2. Deploy the Contract
@@ -20,7 +20,7 @@ cd contract
 
 ### 3. Frontend Configuration ✅ COMPLETED
 The frontend has been updated to use the contract address:
-- ✅ Added `PICTIONARY_MODULE_ADDRESS` constant in `frontend/constants.ts`
+- ✅ Added `MODULE_ADDRESS` constant in `frontend/constants.ts`
 - ✅ Updated all contract integration files to use the constant
 - ✅ All placeholder addresses replaced with actual contract address
 
@@ -167,3 +167,16 @@ After successful deployment, consider implementing:
 ---
 
 🎉 **Ready to deploy your Aptos Pictionary game!**
+
+## Surf
+We use [Surf](https://github.com/ThalaLabs/surf). Surf requires the ABI of the Move module in the JSON format that comes from the node API.
+
+Run this to get the ABIs as JSON:
+```
+curl -s https://api.testnet.aptoslabs.com/v1/accounts/0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f/modules | jq .[].abi | pbcopy
+```
+
+Paste those into this file:
+```
+frontend/utils/abis.ts
+``

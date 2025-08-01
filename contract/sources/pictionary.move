@@ -1,3 +1,10 @@
+/// Pictionary game implementation on Aptos blockchain
+/// 
+/// This module implements a multiplayer pictionary game where:
+/// - Two teams compete with at least 2 players each
+/// - Artists rotate and draw words while teammates guess
+/// - Canvas updates are stored on-chain with delta compression
+/// - Games are played to a target score with timed rounds
 module pictionary::pictionary {
     use std::option::{Self, Option};
     use std::signer;
@@ -6,7 +13,7 @@ module pictionary::pictionary {
     use aptos_framework::event;
     use aptos_framework::object::{Self, ExtendRef};
     use aptos_framework::randomness;
-    use aptos_framework::simple_map::{Self, SimpleMap};
+    use aptos_framework::ordered_map::{Self, OrderedMap};
     use aptos_framework::timestamp;
 
     // Error codes
@@ -35,7 +42,8 @@ module pictionary::pictionary {
     /// Round time expired
     const EROUND_TIME_EXPIRED: u64 = 12;
 
-    // Color palette for drawing
+    /// Color palette available for drawing on the canvas
+    /// Each variant represents a different color that artists can use
     enum Color has store, copy, drop {
         Black,
         White,
@@ -48,127 +56,207 @@ module pictionary::pictionary {
         Pink,
         Brown,
         Gray,
-        LightBlue,
-        LightGreen,
-        LightRed,
     }
 
-    // Canvas pixel delta for efficient updates
+    /// Represents a single pixel change on the canvas for efficient delta updates
+    /// Used to minimize on-chain storage by only storing changes rather than full canvas
     struct CanvasDelta has store, copy, drop {
+        /// Linear position on canvas (y * width + x)
         position: u16,
+        /// Color to set at this position
         color: Color,
     }
 
-    // Canvas representing the drawing area
+    /// Canvas representing the drawing area for each team in each round
+    /// Stores pixel data efficiently using ordered map for consistent iteration
     struct Canvas has store {
-        pixels: SimpleMap<u16, Color>,
+        /// Pixel data stored as position -> color mapping
+        /// Only stores non-default (non-white) pixels for efficiency
+        pixels: OrderedMap<u16, Color>,
+        /// Canvas width in pixels
         width: u16,
+        /// Canvas height in pixels  
         height: u16,
-        last_updated: u64, // timestamp
+        /// Unix timestamp of last canvas update
+        last_updated: u64,
     }
 
-    // Round information
+    /// Contains all information for a single round of the game
+    /// Each round has its own word, timer, and canvas for each team
     struct Round has store {
+        /// Sequential round number starting from 0
         round_number: u64,
+        /// The word both teams are trying to draw/guess
         word: String,
+        /// Unix timestamp when round started
         start_time: u64,
+        /// How long the round lasts in seconds
         duration_seconds: u64,
+        /// Team 0's drawing canvas for this round
         team0_canvas: Canvas,
+        /// Team 1's drawing canvas for this round
         team1_canvas: Canvas,
+        /// Whether team 0 has guessed correctly
         team0_guessed: bool,
+        /// Whether team 1 has guessed correctly
         team1_guessed: bool,
+        /// Timestamp when team 0 guessed (if they did)
         team0_guess_time: Option<u64>,
+        /// Timestamp when team 1 guessed (if they did)
         team1_guess_time: Option<u64>,
+        /// Whether this round has completed
         finished: bool,
     }
 
-    // Main game object
+    /// Main game state stored as an Aptos object
+    /// Contains all players, scores, rounds, and game configuration
     struct Game has key {
+        /// Address of the player who created this game
         creator: address,
+        /// List of addresses on team 0 (must have at least 2 players)
         team0_players: vector<address>,
+        /// List of addresses on team 1 (must have at least 2 players)
         team1_players: vector<address>,
-        current_team0_artist: u64, // index in team0_players
-        current_team1_artist: u64, // index in team1_players
+        /// Index of current artist in team0_players vector
+        current_team0_artist: u64,
+        /// Index of current artist in team1_players vector
+        current_team1_artist: u64,
+        /// Current score for team 0
         team0_score: u64,
+        /// Current score for team 1
         team1_score: u64,
+        /// Score needed to win the game
         target_score: u64,
+        /// Number of rounds played (starts at 0)
         current_round: u64,
+        /// History of all rounds played
         rounds: vector<Round>,
+        /// Whether the game has been started by creator
         started: bool,
+        /// Whether the game has finished (someone reached target score)
         finished: bool,
-        winner: Option<u64>, // 0 or 1 for team, none if not finished
+        /// Which team won (0 or 1), none if game not finished
+        winner: Option<u64>,
+        /// Width of canvas in pixels for all rounds
         canvas_width: u16,
+        /// Height of canvas in pixels for all rounds
         canvas_height: u16,
+        /// Duration of each round in seconds
         round_duration: u64,
+        /// Object extend reference for future upgrades
         extend_ref: ExtendRef,
     }
 
-    // Word list for the game
+    /// Global word list used for selecting random words in games
+    /// Only the module deployer can update this list
     struct WordList has key {
+        /// List of words that can be randomly selected for rounds
         words: vector<String>,
+        /// Object extend reference for future upgrades
         extend_ref: ExtendRef,
     }
 
-    // Events
     #[event]
+    /// Emitted when a new game is created.
+    /// Used by frontend to show games a user is participating in.
     struct GameCreated has drop, store {
+        /// Object address of the created game
         game_address: address,
+        /// Address of the player who created the game
         creator: address,
+        /// All players on team 0
         team0_players: vector<address>,
+        /// All players on team 1
         team1_players: vector<address>,
+        /// Score needed to win this game
         target_score: u64,
     }
 
     #[event]
+    /// Emitted when a new round begins
     struct RoundStarted has drop, store {
+        /// Game this round belongs to
         game_address: address,
+        /// Sequential round number
         round_number: u64,
+        /// Word to be drawn (revealed to artists only initially)
         word: String,
+        /// Current artist for team 0
         team0_artist: address,
+        /// Current artist for team 1
         team1_artist: address,
+        /// When this round started
         start_time: u64,
     }
 
     #[event]
+    /// Emitted when an artist updates their team's canvas
     struct CanvasUpdated has drop, store {
+        /// Game this update belongs to
         game_address: address,
+        /// Which team's canvas was updated (0 or 1)
         team: u64,
+        /// Which round this update belongs to
         round_number: u64,
+        /// Artist who made the drawing changes
         artist: address,
+        /// List of pixel changes made
         deltas: vector<CanvasDelta>,
+        /// When the update was made
         timestamp: u64,
     }
 
     #[event]
+    /// Emitted when a player makes a guess
     struct GuessSubmitted has drop, store {
+        /// Game this guess belongs to
         game_address: address,
+        /// Player who made the guess
         guesser: address,
+        /// Which team the guesser is on (0 or 1)
         team: u64,
+        /// The guess that was made
         guess: String,
+        /// Which round this guess was for
         round_number: u64,
+        /// When the guess was made
         timestamp: u64,
     }
 
     #[event]
+    /// Emitted when a round completes
     struct RoundFinished has drop, store {
+        /// Game this round belongs to
         game_address: address,
+        /// Which round just finished
         round_number: u64,
+        /// The word that was being drawn
         word: String,
+        /// Points team 0 earned this round
         team0_points_earned: u64,
+        /// Points team 1 earned this round
         team1_points_earned: u64,
+        /// Team 0's total score after this round
         team0_total_score: u64,
+        /// Team 1's total score after this round
         team1_total_score: u64,
     }
 
     #[event]
+    /// Emitted when a game ends (team reaches target score)
     struct GameFinished has drop, store {
+        /// Game that just finished
         game_address: address,
+        /// Winning team (0 or 1)
         winner: u64,
+        /// Team 0's final score
         final_team0_score: u64,
+        /// Team 1's final score
         final_team1_score: u64,
     }
 
-    // Initialize the module with a default word list
+    /// Initialize the module with a default word list
+    /// Called automatically when the module is first published
     fun init_module(deployer: &signer) {
         let constructor_ref = object::create_named_object(deployer, b"WordList");
         let extend_ref = object::generate_extend_ref(&constructor_ref);
@@ -203,7 +291,8 @@ module pictionary::pictionary {
         });
     }
 
-    // Create a new game
+    /// Creates a new pictionary game with the specified teams and settings
+    /// Game is created but not started - creator must call start_game() separately
     public entry fun create_game(
         creator: &signer,
         team0_players: vector<address>,
@@ -255,7 +344,8 @@ module pictionary::pictionary {
         move_to(&game_signer, game);
     }
 
-    // Start the game (only creator can do this)
+    // Starts the game and begins the first round (only creator can do this)
+    // Uses on-chain randomness to select the first word
     #[lint::allow_unsafe_randomness]
     public entry fun start_game(creator: &signer, game_address: address) acquires Game, WordList {
         let game = borrow_global_mut<Game>(game_address);
@@ -267,7 +357,8 @@ module pictionary::pictionary {
         start_new_round(game_address);
     }
 
-    // Internal function to start a new round
+    /// Internal function to start a new round with a random word
+    /// Creates fresh canvases and rotates artists
     fun start_new_round(game_address: address) acquires Game, WordList {
         let game = borrow_global_mut<Game>(game_address);
         assert!(game.started, EGAME_NOT_STARTED);
@@ -280,14 +371,14 @@ module pictionary::pictionary {
 
         // Create new canvases for this round
         let team0_canvas = Canvas {
-            pixels: simple_map::create(),
+            pixels: ordered_map::new(),
             width: game.canvas_width,
             height: game.canvas_height,
             last_updated: timestamp::now_seconds(),
         };
 
         let team1_canvas = Canvas {
-            pixels: simple_map::create(),
+            pixels: ordered_map::new(),
             width: game.canvas_width,
             height: game.canvas_height,
             last_updated: timestamp::now_seconds(),
@@ -327,7 +418,8 @@ module pictionary::pictionary {
         game.current_round = game.current_round + 1;
     }
 
-    // Submit canvas delta (drawing updates)
+    /// Submits drawing updates to the canvas (only current artist can do this)
+    /// Uses delta compression to minimize on-chain storage
     public entry fun submit_canvas_delta(
         artist: &signer,
         game_address: address,
@@ -388,7 +480,7 @@ module pictionary::pictionary {
             let max_position = (canvas.width as u32) * (canvas.height as u32);
             assert!((delta.position as u32) < max_position, EINVALID_CANVAS_POSITION);
             
-            simple_map::upsert(&mut canvas.pixels, delta.position, delta.color);
+            ordered_map::upsert(&mut canvas.pixels, delta.position, delta.color);
             i = i + 1;
         };
 
@@ -405,7 +497,8 @@ module pictionary::pictionary {
         });
     }
 
-    // Make a guess
+    /// Submits a guess for the current round
+    /// Automatically awards points if the guess is correct
     public entry fun make_guess(
         guesser: &signer,
         game_address: address,
@@ -459,7 +552,8 @@ module pictionary::pictionary {
         };
     }
 
-    // Get which team a player is on
+    /// Determines which team a player belongs to
+    /// Returns 0 for team 0, 1 for team 1
     fun get_player_team(game: &Game, player: address): u64 {
         if (vector::contains(&game.team0_players, &player)) {
             0
@@ -468,7 +562,8 @@ module pictionary::pictionary {
         }
     }
 
-    // Convert u8 to Color enum
+    /// Converts a u8 value to the corresponding Color enum variant
+    /// Used for canvas delta updates from frontend
     fun u8_to_color(value: u8): Color {
         if (value == 0) Color::Black
         else if (value == 1) Color::White
@@ -481,13 +576,11 @@ module pictionary::pictionary {
         else if (value == 8) Color::Pink
         else if (value == 9) Color::Brown
         else if (value == 10) Color::Gray
-        else if (value == 11) Color::LightBlue
-        else if (value == 12) Color::LightGreen
-        else if (value == 13) Color::LightRed
         else Color::Black // Default fallback
     }
 
-    // Internal function to finish the current round
+    /// Internal function to complete the current round and award points
+    /// Calculates scoring based on who guessed correctly and when
     fun finish_round(game_address: address) acquires Game {
         let game = borrow_global_mut<Game>(game_address);
         let current_round_index = game.current_round - 1;
@@ -558,7 +651,8 @@ module pictionary::pictionary {
         };
     }
 
-    // Start next round (can be called by any artist)
+    // Starts the next round (can be called by either current artist)
+    // Only allowed after current round is finished
     #[lint::allow_unsafe_randomness]
     public entry fun next_round(caller: &signer, game_address: address) acquires Game, WordList {
         let game = borrow_global<Game>(game_address);
@@ -583,8 +677,8 @@ module pictionary::pictionary {
         start_new_round(game_address);
     }
 
-    // View functions
     #[view]
+    /// Returns complete game information
     public fun get_game(game_address: address): (
         address, // creator
         vector<address>, // team0_players
@@ -623,6 +717,8 @@ module pictionary::pictionary {
     }
 
     #[view]
+    /// Returns information about the current/most recent round
+    /// Word is only revealed if the round is finished
     public fun get_current_round(game_address: address): (
         u64, // round_number
         String, // word (only if round is finished)
@@ -663,7 +759,8 @@ module pictionary::pictionary {
     }
 
     #[view]
-    public fun get_canvas(game_address: address, round_number: u64, team: u64): SimpleMap<u16, Color> acquires Game {
+    /// Returns the canvas pixel data for a specific round and team
+    public fun get_canvas(game_address: address, round_number: u64, team: u64): OrderedMap<u16, Color> acquires Game {
         let game = borrow_global<Game>(game_address);
         assert!(team == 0 || team == 1, EINVALID_TEAM);
         assert!(round_number < vector::length(&game.rounds), EGAME_NOT_FOUND);
@@ -678,7 +775,8 @@ module pictionary::pictionary {
         canvas.pixels
     }
 
-    // Admin functions (creator only)
+    /// Updates the global word list used for random word selection
+    /// Only the original module deployer can call this
     public entry fun update_word_list(deployer: &signer, new_words: vector<String>) acquires WordList {
         let word_list = borrow_global_mut<WordList>(@pictionary);
         // Only the original deployer can update the word list
