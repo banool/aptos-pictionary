@@ -1,0 +1,150 @@
+import { useState, useEffect } from "react";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { Button } from "@/components/ui/button";
+import { Play, SkipForward, Clock } from "lucide-react";
+
+interface GameStatusProps {
+  gameState: {
+    creator: string;
+    started: boolean;
+    finished: boolean;
+    currentRound: number;
+  };
+  roundState: {
+    startTime: number;
+    durationSeconds: number;
+    finished: boolean;
+  } | null;
+  userTeam: number | null;
+  isCurrentArtist: boolean;
+  onStartGame: () => void;
+  onNextRound: () => void;
+}
+
+export function GameStatus({
+  gameState,
+  roundState,
+  userTeam,
+  isCurrentArtist,
+  onStartGame,
+  onNextRound,
+}: GameStatusProps) {
+  const { account } = useWallet();
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  // Update timer
+  useEffect(() => {
+    if (!roundState || roundState.finished) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = Date.now() / 1000;
+      const elapsed = now - roundState.startTime;
+      const remaining = Math.max(0, roundState.durationSeconds - elapsed);
+      setTimeLeft(Math.ceil(remaining));
+
+      if (remaining <= 0) {
+        setTimeLeft(0);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [roundState]);
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getStatusMessage = (): string => {
+    if (!gameState.started) {
+      return "Waiting for game to start...";
+    }
+
+    if (gameState.finished) {
+      return "Game finished!";
+    }
+
+    if (!roundState) {
+      return "Loading round...";
+    }
+
+    if (roundState.finished) {
+      return "Round finished - waiting for next round";
+    }
+
+    if (userTeam === null) {
+      return "You're spectating this game";
+    }
+
+    if (isCurrentArtist) {
+      return "It's your turn to draw!";
+    }
+
+    return "Guess what's being drawn!";
+  };
+
+  const canStartGame = gameState.creator === account?.address?.toString() && !gameState.started;
+  const canStartNextRound = isCurrentArtist && roundState?.finished;
+
+  return (
+    <div className="bg-white border-b p-4">
+      <div className="max-w-screen-xl mx-auto flex items-center justify-between">
+        {/* Status Info */}
+        <div className="flex items-center space-x-6">
+          <div>
+            <h2 className="text-lg font-semibold">{getStatusMessage()}</h2>
+            {roundState && !roundState.finished && (
+              <p className="text-sm text-gray-600">
+                Round {gameState.currentRound} in progress
+              </p>
+            )}
+          </div>
+
+          {/* Timer */}
+          {timeLeft !== null && (
+            <div className="flex items-center space-x-2">
+              <Clock size={20} className={timeLeft <= 10 ? "text-red-500" : "text-gray-500"} />
+              <span
+                className={`text-xl font-mono font-bold ${
+                  timeLeft <= 10 ? "text-red-500" : "text-gray-700"
+                }`}
+              >
+                {formatTime(timeLeft)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center space-x-3">
+          {canStartGame && (
+            <Button onClick={onStartGame} className="flex items-center gap-2">
+              <Play size={16} />
+              Start Game
+            </Button>
+          )}
+
+          {canStartNextRound && (
+            <Button onClick={onNextRound} className="flex items-center gap-2">
+              <SkipForward size={16} />
+              Next Round
+            </Button>
+          )}
+
+          {roundState && !roundState.finished && timeLeft !== null && (
+            <div className="text-sm text-gray-500">
+              {timeLeft > 0 ? `${timeLeft}s remaining` : "Time's up!"}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

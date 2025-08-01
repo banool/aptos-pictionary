@@ -1,0 +1,14 @@
+[package]
+name = "aptos-pictionary"
+version = "1.0.0"
+
+[addresses]
+pictionary = "_"
+
+[dev-addresses]
+pictionary = "0x123"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-framework.git"
+rev = "mainnet"
+subdir = "aptos-framework"

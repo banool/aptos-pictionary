@@ -1,0 +1,25 @@
+import { WalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+
+interface HeaderProps {
+  onCreateGame?: () => void;
+}
+
+export function Header({ onCreateGame }: HeaderProps) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2 max-w-screen-xl mx-auto w-full flex-wrap">
+      <h1 className="display">Aptos Pictionary</h1>
+
+      <div className="flex gap-2 items-center flex-wrap">
+        {onCreateGame && (
+          <Button onClick={onCreateGame} size="sm" className="flex items-center gap-2">
+            <Plus size={16} />
+            Create Game
+          </Button>
+        )}
+        <WalletSelector />
+      </div>
+    </div>
+  );
+}
