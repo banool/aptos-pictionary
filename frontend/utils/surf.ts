@@ -3,8 +3,8 @@ import { Aptos, AccountAddress } from "@aptos-labs/ts-sdk";
 import { PICTIONARY_ABI } from "./abis";
 
 type ABITable = DefaultABITable & {
-    "0xcc4de567219c07e127d50a6abc450e22deb84a687c6e39876e0618cd104a4a69::pictionary": typeof PICTIONARY_ABI;
-  };
+  "0xcc4de567219c07e127d50a6abc450e22deb84a687c6e39876e0618cd104a4a69::pictionary": typeof PICTIONARY_ABI;
+};
 
 // Create the Surf client instance with proper receiver-style API
 export const createPictionarySurfClient = (aptos: Aptos) => {

@@ -10,6 +10,7 @@ import App from "@/App.tsx";
 // Internal components
 import { Toaster } from "@/components/ui/toaster.tsx";
 import { AuthProvider } from "@/components/AuthProvider.tsx";
+import { AuthInitializer } from "@/components/AuthInitializer.tsx";
 
 const queryClient = new QueryClient();
 
@@ -17,10 +18,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <App />
-          <Toaster />
-        </QueryClientProvider>
+        <AuthInitializer>
+          <QueryClientProvider client={queryClient}>
+            <App />
+            <Toaster />
+          </QueryClientProvider>
+        </AuthInitializer>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,

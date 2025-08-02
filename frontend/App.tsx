@@ -5,6 +5,7 @@ import { AccountAddress } from "@aptos-labs/ts-sdk";
 import { Header } from "@/components/Header";
 import { GameInterface } from "@/components/GameInterface";
 import { CreateGameModal } from "@/components/CreateGameModal";
+import { GoogleCallback } from "@/components/GoogleCallback";
 import { useAuthStore } from "@/store/auth";
 
 // Home page component
@@ -24,7 +25,7 @@ function HomePage() {
   };
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <Header onCreateGame={activeAccount ? handleCreateGame : undefined} />
       <div className="flex-1 flex">
         {activeAccount ? (
@@ -53,7 +54,7 @@ function HomePage() {
         onClose={() => setShowCreateModal(false)}
         onGameCreated={handleGameCreated}
       />
-    </>
+    </div>
   );
 }
 
@@ -85,7 +86,7 @@ function GamePage() {
   }
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <Header onCreateGame={activeAccount ? handleCreateGame : undefined} />
       <div className="flex-1 flex">
         {!activeAccount ? (
@@ -122,7 +123,7 @@ function GamePage() {
         onClose={() => setShowCreateModal(false)}
         onGameCreated={handleGameCreated}
       />
-    </>
+    </div>
   );
 }
 
@@ -131,6 +132,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/auth/google/callback" element={<GoogleCallback />} />
       <Route path="/:gameAddress" element={<GamePage />} />
     </Routes>
   );

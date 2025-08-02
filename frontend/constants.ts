@@ -1,12 +1,14 @@
 // The Aptos network the dapp is using
 export const NETWORK = import.meta.env.VITE_APP_NETWORK ?? "testnet";
 // The address of the published module
-export const MODULE_ADDRESS = import.meta.env.VITE_MODULE_ADDRESS ?? "0xcc4de567219c07e127d50a6abc450e22deb84a687c6e39876e0618cd104a4a69";
+export const MODULE_ADDRESS =
+  import.meta.env.VITE_MODULE_ADDRESS ?? "0xcc4de567219c07e127d50a6abc450e22deb84a687c6e39876e0618cd104a4a69";
 // The API key for the Aptos API (from Aptos Build)
 export const APTOS_API_KEY = import.meta.env.VITE_APTOS_API_KEY ?? "AG-JSPD2XGUVKASR9VYPD16BUXOYBFXY4JKS";
 
 // Google OAuth configuration for keyless accounts
-export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "923528765222-7chn2ivueemv5mi3e443rb0auvfkrfau.apps.googleusercontent.com";
+export const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "923528765222-7chn2ivueemv5mi3e443rb0auvfkrfau.apps.googleusercontent.com";
 
 // Aptos Build Organization & Project IDs for reference
 export const APTOS_BUILD_ORG_ID = "cmdsptu8n008os6016rwdb6x9";

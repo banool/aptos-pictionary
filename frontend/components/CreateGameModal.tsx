@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AccountAddress, TransactionResponseType } from "@aptos-labs/ts-sdk";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export function CreateGameModal({
   onGameCreated,
 }: CreateGameModalProps) {
   const account = useAuthStore(state => state.activeAccount);
+  const [userDisplayName, setUserDisplayName] = useState<string>("");
   const [team0Players, setTeam0Players] = useState<PlayerInput[]>([
     { id: "1", address: "" },
     { id: "2", address: "" },
@@ -43,8 +44,74 @@ export function CreateGameModal({
   ]);
   const [targetScore, setTargetScore] = useState("11");
   const [canvasSize, setCanvasSize] = useState("500");
-  const [roundDuration, setRoundDuration] = useState("30");
+  const [roundDuration, setRoundDuration] = useState("60");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get user's ANS name or use their address
+  useEffect(() => {
+    const getUserDisplayName = async () => {
+      if (!account) {
+        setUserDisplayName("");
+        return;
+      }
+
+      try {
+        // Validate account before using it
+        if (!account.accountAddress || typeof account.accountAddress.toString !== 'function') {
+          console.warn('Invalid account object in getUserDisplayName');
+          setUserDisplayName("");
+          return;
+        }
+
+        const addressString = account.accountAddress.toString();
+        
+        // Try to get their ANS name first
+        const ansName = await aptos.ans.getPrimaryName({ 
+          address: addressString 
+        });
+        setUserDisplayName(ansName || addressString);
+      } catch (error) {
+        console.warn('Error getting user display name:', error);
+        try {
+          // Fallback: try to use just the address
+          const addressString = account.accountAddress.toString();
+          setUserDisplayName(addressString);
+        } catch (addressError) {
+          console.error('Cannot access account address:', addressError);
+          setUserDisplayName("");
+        }
+      }
+    };
+
+    if (open && account) {
+      getUserDisplayName();
+    }
+  }, [account, open]);
+
+  // Prefill user's address when modal opens and reset when closed
+  useEffect(() => {
+    if (open && account && userDisplayName) {
+      // Always prefill the first position of team 0 with the user's address/ANS name
+      setTeam0Players(prev => [
+        { ...prev[0], address: userDisplayName },
+        ...prev.slice(1)
+      ]);
+    } else if (!open) {
+      // Reset form when modal closes
+      setTeam0Players([
+        { id: "1", address: "" },
+        { id: "2", address: "" },
+      ]);
+      setTeam1Players([
+        { id: "3", address: "" },
+        { id: "4", address: "" },
+      ]);
+      setTargetScore("11");
+      setCanvasSize("500");
+      setRoundDuration("60");
+      setUserDisplayName("");
+    }
+  }, [open, account, userDisplayName]);
 
   const addPlayer = (team: 0 | 1) => {
     const setPlayers = team === 0 ? setTeam0Players : setTeam1Players;
@@ -103,7 +170,28 @@ export function CreateGameModal({
   };
 
   const handleCreateGame = async () => {
-    if (!account) return;
+    // Validate account object thoroughly
+    if (!account) {
+      alert("Please sign in to create a game");
+      return;
+    }
+
+    // Check if account has the required properties
+    try {
+      if (!account.accountAddress || typeof account.accountAddress.toString !== 'function') {
+        throw new Error("Invalid account object: missing or corrupted accountAddress");
+      }
+      
+      // Test that we can access the address without errors
+      const addressTest = account.accountAddress.toString();
+      if (!addressTest || addressTest.length < 10) {
+        throw new Error("Invalid account address format");
+      }
+    } catch (accountError) {
+      console.error("Account validation failed:", accountError);
+      alert("Your session data appears to be corrupted. Please refresh the page and sign in again.");
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -211,29 +299,39 @@ export function CreateGameModal({
           <Plus size={16} />
         </Button>
       </div>
-      {players.map((player, index) => (
-        <div key={player.id} className="flex gap-2 items-center">
-          <Input
-            placeholder={`Player ${index + 1} address or ANS name`}
-            value={player.address}
-            onChange={(e) =>
-              updatePlayerAddress(team, player.id, e.target.value)
-            }
-            className="flex-1"
-          />
-          {players.length > 2 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => removePlayer(team, player.id)}
-              className="h-8 w-8 p-0"
-            >
-              <Minus size={16} />
-            </Button>
-          )}
-        </div>
-      ))}
+      {players.map((player, index) => {
+        const isPrefilledUser = team === 0 && index === 0 && player.address === userDisplayName && userDisplayName !== "";
+        return (
+          <div key={player.id} className="flex gap-2 items-center">
+            <Input
+              placeholder={
+                team === 0 && index === 0 
+                  ? `Your address${userDisplayName ? " (auto-filled)" : ""}` 
+                  : `Player ${index + 1} address or ANS name`
+              }
+              value={player.address}
+              onChange={(e) =>
+                updatePlayerAddress(team, player.id, e.target.value)
+              }
+              className={`flex-1 ${isPrefilledUser ? "bg-blue-50 border-blue-200" : ""}`}
+            />
+            {isPrefilledUser && (
+              <span className="text-xs text-blue-600 font-medium px-2">You</span>
+            )}
+            {players.length > 2 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => removePlayer(team, player.id)}
+                className="h-8 w-8 p-0"
+              >
+                <Minus size={16} />
+              </Button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 

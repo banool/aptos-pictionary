@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore, useLogin } from "@/store/auth";
+import { UserMenu } from "@/components/UserMenu";
 import { GOOGLE_CLIENT_ID } from "@/constants";
 
 interface LoginButtonProps {
@@ -10,7 +11,6 @@ interface LoginButtonProps {
 export function LoginButton({ className }: LoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const activeAccount = useAuthStore(state => state.activeAccount);
-  const disconnectKeylessAccount = useAuthStore(state => state.disconnectKeylessAccount);
   
   const { getGoogleRequestLoginUrl } = useLogin({
     onRequest: () => setIsLoading(true),
@@ -26,16 +26,9 @@ export function LoginButton({ className }: LoginButtonProps) {
     );
   }
 
+  // Show user menu when logged in
   if (activeAccount) {
-    return (
-      <Button
-        onClick={disconnectKeylessAccount}
-        variant="outline"
-        className={className}
-      >
-        Disconnect
-      </Button>
-    );
+    return <UserMenu className={className} />;
   }
 
   const handleLogin = () => {

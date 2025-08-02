@@ -1,5 +1,12 @@
 import { AccountAddress, Aptos } from "@aptos-labs/ts-sdk";
-import { createPictionarySurfClient, GameState, RoundState, Canvas, orderedMapToCanvas, RawRoundSummary } from "@/utils/surf";
+import {
+  createPictionarySurfClient,
+  GameState,
+  RoundState,
+  Canvas,
+  orderedMapToCanvas,
+  RawRoundSummary,
+} from "@/utils/surf";
 
 export interface RoundResult {
   roundNumber: number;
@@ -147,7 +154,7 @@ export const getRoundHistory = async (aptos: Aptos, gameAddress: AccountAddress)
     const roundResults: RoundResult[] = [];
     let team0TotalScore = 0;
     let team1TotalScore = 0;
-    
+
     for (const roundSummary of rounds as unknown as RawRoundSummary[]) {
       // Calculate points for this round based on guess times
       let team0Points = 0;
@@ -157,7 +164,7 @@ export const getRoundHistory = async (aptos: Aptos, gameAddress: AccountAddress)
         // Both teams guessed - first gets 2 points, second gets 1
         const team0Time = roundSummary.team0_guess_time ? Number(roundSummary.team0_guess_time) : null;
         const team1Time = roundSummary.team1_guess_time ? Number(roundSummary.team1_guess_time) : null;
-        
+
         if (team0Time && team1Time) {
           if (team0Time <= team1Time) {
             team0Points = 2;
@@ -177,9 +184,16 @@ export const getRoundHistory = async (aptos: Aptos, gameAddress: AccountAddress)
       team1TotalScore += team1Points;
 
       // Fix the round number parsing - add 1 since rounds are 0-indexed on chain
-      const roundNumber = typeof roundSummary.round_number === 'string' 
-        ? parseInt(roundSummary.round_number) + 1
-        : Number(roundSummary.round_number) + 1;
+      let roundNumber: number;
+      if (typeof roundSummary.round_number === "string") {
+        const parsed = parseInt(roundSummary.round_number, 10);
+        roundNumber = isNaN(parsed) ? 0 : parsed + 1;
+      } else if (typeof roundSummary.round_number === "number") {
+        roundNumber = roundSummary.round_number + 1;
+      } else {
+        console.warn("Unexpected round_number type:", typeof roundSummary.round_number, roundSummary.round_number);
+        roundNumber = 1; // Default to round 1
+      }
 
       roundResults.push({
         roundNumber,
@@ -201,7 +215,11 @@ export const getRoundHistory = async (aptos: Aptos, gameAddress: AccountAddress)
 /**
  * Get the current word for an artist (returns empty string if not artist or round not active)
  */
-export const getCurrentWordForArtist = async (aptos: Aptos, gameAddress: AccountAddress, playerAddress: AccountAddress): Promise<string> => {
+export const getCurrentWordForArtist = async (
+  aptos: Aptos,
+  gameAddress: AccountAddress,
+  playerAddress: AccountAddress,
+): Promise<string> => {
   try {
     const client = createPictionarySurfClient(aptos);
 

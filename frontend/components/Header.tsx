@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { LoginButton } from "@/components/LoginButton";
+import { AptBalanceDisplay } from "@/components/AptBalanceDisplay";
 import { Plus } from "lucide-react";
 
 interface HeaderProps {
@@ -12,6 +13,7 @@ export function Header({ onCreateGame }: HeaderProps) {
       <h1 className="display cursor-pointer hover:text-blue-600" onClick={() => window.location.href = '/'}>Aptos Pictionary</h1>
 
       <div className="flex gap-2 items-center flex-wrap">
+        <AptBalanceDisplay />
         {onCreateGame && (
           <Button onClick={onCreateGame} size="sm" className="flex items-center gap-2">
             <Plus size={16} />

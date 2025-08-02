@@ -1,6 +1,5 @@
 import { AccountAddress } from "@aptos-labs/ts-sdk";
-import { createEntryPayload } from "@thalalabs/surf";
-import { PICTIONARY_ABI } from "@/utils/abis";
+import { MODULE_ADDRESS } from "@/constants";
 
 export type CreateGameArguments = {
   team0Players: AccountAddress[];
@@ -14,22 +13,23 @@ export type CreateGameArguments = {
 };
 
 /**
- * Build payload for creating a new Pictionary game - Using Surf createEntryPayload
- * Returns the transaction payload to be used with wallet adapter
+ * Build payload for creating a new Pictionary game using native Aptos SDK
+ * Returns the transaction payload to be used with keyless accounts
  */
 export const buildCreateGamePayload = (args: CreateGameArguments) => {
-  return createEntryPayload(PICTIONARY_ABI, {
-    function: "create_game",
+  return {
+    function: `${MODULE_ADDRESS}::pictionary::create_game` as const,
     functionArguments: [
+      // Note: Do NOT include the signer parameter - it's handled automatically by the SDK
       args.team0Players.map((addr) => addr.toString()),
       args.team1Players.map((addr) => addr.toString()),
       args.team0Name,
       args.team1Name,
-      args.targetScore,
-      args.canvasWidth,
-      args.canvasHeight,
-      args.roundDuration,
+      args.targetScore.toString(),
+      args.canvasWidth.toString(),
+      args.canvasHeight.toString(),
+      args.roundDuration.toString(),
     ],
     typeArguments: [],
-  });
+  };
 };

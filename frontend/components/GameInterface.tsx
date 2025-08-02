@@ -229,11 +229,14 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
 
   return (
     <div className="flex-1 flex h-full">
-      {/* Left Sidebar - Games List (empty for now) */}
-      <div className="w-64 border-r bg-gray-50 p-4">
-        <h3 className="font-semibold mb-4">My Games</h3>
-        <p className="text-sm text-gray-500">Coming soon...</p>
-      </div>
+      {/* Left Sidebar - Game Info (moved from right) */}
+      <GameSidebar
+        gameState={gameState}
+        roundState={roundState}
+        userTeam={getUserTeam()}
+        getDisplayName={getDisplayName}
+        gameAddress={gameAddress}
+      />
 
       {/* Main Canvas Area */}
       <div className="flex-1 flex flex-col">
@@ -258,14 +261,13 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
         </div>
       </div>
 
-      {/* Right Sidebar - Game Info */}
-      <GameSidebar
-        gameState={gameState}
-        roundState={roundState}
-        userTeam={getUserTeam()}
-        getDisplayName={getDisplayName}
-        gameAddress={gameAddress}
-      />
+      {/* Left Sidebar - Games List (commented out for now, keeping code) */}
+      {/* 
+      <div className="w-64 border-r bg-gray-50 p-4">
+        <h3 className="font-semibold mb-4">My Games</h3>
+        <p className="text-sm text-gray-500">Coming soon...</p>
+      </div>
+      */}
     </div>
   );
 }

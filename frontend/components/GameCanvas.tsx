@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Palette, Eraser, Send } from "lucide-react";
+import { Palette, Eraser, Clock } from "lucide-react";
 import { CanvasDelta } from "@/utils/surf";
 
 interface GameCanvasProps {
@@ -45,6 +45,8 @@ export function GameCanvas({
   const [brushSize, setBrushSize] = useState(5);
   const [pendingDeltas, setPendingDeltas] = useState<CanvasDelta[]>([]);
   const [showColorPalette, setShowColorPalette] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [autoFlushInterval, setAutoFlushInterval] = useState<NodeJS.Timeout | null>(null);
 
   // Initialize canvas
   useEffect(() => {
@@ -153,12 +155,52 @@ export function GameCanvas({
       
       // Clear pending deltas after successful submission
       setPendingDeltas([]);
+      setCountdown(0);
+
+      // Clear the auto-flush interval
+      if (autoFlushInterval) {
+        clearInterval(autoFlushInterval);
+        setAutoFlushInterval(null);
+      }
     } catch (error) {
       console.error("Failed to flush deltas:", error);
     }
-  }, [pendingDeltas, onCanvasUpdate]);
+  }, [pendingDeltas, onCanvasUpdate, autoFlushInterval]);
 
-  // Remove auto-flush - will be manual now
+  // Auto-flush effect - start countdown when deltas are added
+  useEffect(() => {
+    if (pendingDeltas.length > 0 && !autoFlushInterval && canDraw) {
+      setCountdown(5); // Start 5-second countdown
+      
+      const interval = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            // Auto-flush when countdown reaches 0
+            flushDeltas();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      setAutoFlushInterval(interval);
+    }
+
+    // Cleanup interval when no deltas or can't draw
+    if (pendingDeltas.length === 0 || !canDraw) {
+      if (autoFlushInterval) {
+        clearInterval(autoFlushInterval);
+        setAutoFlushInterval(null);
+      }
+      setCountdown(0);
+    }
+
+    return () => {
+      if (autoFlushInterval) {
+        clearInterval(autoFlushInterval);
+      }
+    };
+  }, [pendingDeltas.length, canDraw, autoFlushInterval, flushDeltas]);
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
@@ -253,17 +295,15 @@ export function GameCanvas({
             <span className="text-sm w-6">{brushSize}</span>
           </div>
 
-          {/* Flush Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={flushDeltas}
-            disabled={pendingDeltas.length === 0}
-            className="flex items-center gap-2"
-          >
-            <Send size={16} />
-            Submit ({pendingDeltas.length})
-          </Button>
+          {/* Auto-flush Countdown */}
+          {pendingDeltas.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
+              <Clock size={16} className="text-blue-600" />
+              <span className="text-blue-700">
+                Auto-submit in {countdown}s ({pendingDeltas.length} changes)
+              </span>
+            </div>
+          )}
 
           {/* Clear Button */}
           <Button

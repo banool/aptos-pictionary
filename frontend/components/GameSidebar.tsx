@@ -127,7 +127,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   };
 
   return (
-    <div className="w-80 border-l bg-gray-50 flex flex-col">
+    <div className="w-80 border-r bg-gray-50 flex flex-col">
       {/* Game Info Header */}
       <div className="p-4 border-b bg-white">
         <h3 className="font-semibold text-lg mb-2">Game Status</h3>

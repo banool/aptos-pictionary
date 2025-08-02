@@ -1,9 +1,6 @@
-import {
-  Account,
-  EphemeralKeyPair,
-  KeylessAccount,
-  ProofFetchStatus,
-} from "@aptos-labs/ts-sdk";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { EphemeralKeyPair, KeylessAccount } from "@aptos-labs/ts-sdk";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 
 export interface EncryptedScopedIdToken extends JwtPayload {
@@ -35,7 +32,7 @@ export interface KeylessAccountPublic {
 export function validateIdToken(idToken: string): EncryptedScopedIdToken | null {
   try {
     const decoded = jwtDecode<EncryptedScopedIdToken>(idToken);
-    
+
     // Basic validation - check required fields
     if (!decoded.sub || !decoded.aud || !decoded.iss || !decoded.nonce) {
       console.error("Invalid ID token: missing required fields");
@@ -45,7 +42,8 @@ export function validateIdToken(idToken: string): EncryptedScopedIdToken | null 
     // Check if token is expired
     const currentTime = Math.floor(Date.now() / 1000);
     if (decoded.exp && decoded.exp < currentTime) {
-      console.error("ID token has expired");
+      const expiredDate = new Date(decoded.exp * 1000);
+      console.warn(`ID token expired at ${expiredDate.toISOString()}`);
       return null;
     }
 
@@ -80,80 +78,89 @@ export function isValidEphemeralKeyPair(keyPair: EphemeralKeyPair): boolean {
 /**
  * Validates an ephemeral key pair and returns it if valid, undefined if not.
  */
-export function validateEphemeralKeyPair(account: KeylessAccount): EphemeralKeyPair | undefined {
+export function validateEphemeralKeyPair(keyPair: EphemeralKeyPair): EphemeralKeyPair | undefined {
+  return isValidEphemeralKeyPair(keyPair) ? keyPair : undefined;
+}
+
+/**
+ * Validates a keyless account to ensure it's properly configured.
+ * Returns the account if valid, undefined if not (following confidential payments example).
+ */
+export function validateKeylessAccount(account: KeylessAccount): KeylessAccount | undefined {
   try {
-    if (!account.ephemeralKeyPair) return undefined;
-    
-    const isValid = isValidEphemeralKeyPair(account.ephemeralKeyPair);
-    return isValid ? account.ephemeralKeyPair : undefined;
+    // Check if account has required properties
+    if (!account.accountAddress || !account.ephemeralKeyPair) {
+      return undefined;
+    }
+
+    // Validate the ephemeral key pair and JWT if available
+    const isEphemeralValid = isValidEphemeralKeyPair(account.ephemeralKeyPair);
+    if (!isEphemeralValid) {
+      return undefined;
+    }
+
+    // If we have a JWT, validate it and check nonce match
+    if (account.jwt) {
+      const decodedToken = validateIdToken(account.jwt);
+      if (!decodedToken || decodedToken.nonce !== account.ephemeralKeyPair.nonce) {
+        return undefined;
+      }
+    }
+
+    return account;
   } catch (error) {
-    console.error("Error validating ephemeral key pair:", error);
+    console.error("Error validating keyless account:", error);
     return undefined;
   }
 }
 
 /**
- * Validates a keyless account to ensure it's properly configured.
- */
-export function validateKeylessAccount(account: KeylessAccount): boolean {
-  try {
-    // Check if account has required properties
-    if (!account.accountAddress || !account.ephemeralKeyPair) {
-      return false;
-    }
-
-    // Validate the ephemeral key pair
-    return isValidEphemeralKeyPair(account.ephemeralKeyPair);
-  } catch (error) {
-    console.error("Error validating keyless account:", error);
-    return false;
-  }
-}
-
-/**
- * Encoding/decoding utilities for persisting data
+ * Encoding/decoding utilities for persisting SDK objects
+ * Using the proper BCS serialization methods from the SDK
  */
 export const EphemeralKeyPairEncoding = {
-  encode: (keyPair: EphemeralKeyPair): Record<string, any> => {
-    return {
-      __type: 'EphemeralKeyPair',
-      privateKey: keyPair.privateKey.toString(),
-      expiryDateSecs: keyPair.expiryDateSecs,
-      nonce: keyPair.nonce,
-    };
-  },
-  
-  decode: (encoded: Record<string, any>): EphemeralKeyPair => {
-    if (encoded.__type !== 'EphemeralKeyPair') {
-      throw new Error('Invalid encoded EphemeralKeyPair');
+  decode: (e: any) => {
+    try {
+      return EphemeralKeyPair.fromBytes(e.data);
+    } catch (error) {
+      console.error("Failed to decode EphemeralKeyPair from bytes:", error);
+      throw error;
     }
-    
-    return new EphemeralKeyPair({
-      privateKey: encoded.privateKey,
-      expiryDateSecs: encoded.expiryDateSecs,
-      nonce: encoded.nonce,
-    });
-  }
+  },
+  encode: (e: EphemeralKeyPair) => {
+    try {
+      return {
+        __type: "EphemeralKeyPair",
+        data: e.bcsToBytes(),
+      };
+    } catch (error) {
+      console.error("Failed to encode EphemeralKeyPair to bytes:", error);
+      return undefined;
+    }
+  },
 };
 
 export const KeylessAccountEncoding = {
-  encode: (account: KeylessAccount): Record<string, any> => {
-    return {
-      __type: 'KeylessAccount',
-      accountAddress: account.accountAddress.toString(),
-      ephemeralKeyPair: account.ephemeralKeyPair ? EphemeralKeyPairEncoding.encode(account.ephemeralKeyPair) : undefined,
-      pepper: account.pepper ? Array.from(account.pepper) : undefined,
-      // Add other fields as needed
-    };
-  },
-  
-  decode: (encoded: Record<string, any>): KeylessAccount => {
-    if (encoded.__type !== 'KeylessAccount') {
-      throw new Error('Invalid encoded KeylessAccount');
+  decode: (e: any) => {
+    try {
+      return KeylessAccount.fromBytes(e.data);
+    } catch (error) {
+      console.error("Failed to decode KeylessAccount from bytes:", error);
+      throw error;
     }
-    
-    // This is a simplified version - you might need to reconstruct the full KeylessAccount
-    // depending on the actual implementation requirements
-    throw new Error('KeylessAccount decoding not fully implemented - use aptos.deriveKeylessAccount instead');
-  }
+  },
+  // If the account has a proof, it can be persisted, otherwise it should not be stored
+  encode: (e: KeylessAccount) => {
+    try {
+      return e.proof
+        ? {
+            __type: "KeylessAccount",
+            data: e.bcsToBytes(),
+          }
+        : undefined;
+    } catch (error) {
+      console.error("Failed to encode KeylessAccount to bytes:", error);
+      return undefined;
+    }
+  },
 };
