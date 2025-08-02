@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { AccountAddress, TransactionResponseType } from "@aptos-labs/ts-sdk";
+import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +32,7 @@ export function CreateGameModal({
   onClose,
   onGameCreated,
 }: CreateGameModalProps) {
-  const { account, signAndSubmitTransaction } = useWallet();
+  const account = useAuthStore(state => state.activeAccount);
   const [team0Players, setTeam0Players] = useState<PlayerInput[]>([
     { id: "1", address: "" },
     { id: "2", address: "" },
@@ -145,16 +145,22 @@ export function CreateGameModal({
       const payload = buildCreateGamePayload({
         team0Players: team0AccountAddresses,
         team1Players: team1AccountAddresses,
+        team0Name: "Team 1", // Default team names for now
+        team1Name: "Team 2",
         targetScore: parseInt(targetScore),
         canvasWidth: parseInt(canvasSize),
         canvasHeight: parseInt(canvasSize),
         roundDuration: parseInt(roundDuration),
       });
 
-      // Submit transaction using wallet adapter
-      const response = await signAndSubmitTransaction({
-        sender: account.address,
+      // Submit transaction using keyless account
+      const transaction = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
         data: payload,
+      });
+      const response = await aptos.signAndSubmitTransaction({
+        signer: account,
+        transaction,
       });
 
       // Wait for transaction to be processed

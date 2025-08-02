@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
+import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { Play, SkipForward, Clock } from "lucide-react";
 
@@ -30,12 +30,12 @@ export function GameStatus({
   onStartGame,
   onNextRound,
 }: GameStatusProps) {
-  const { account } = useWallet();
+  const account = useAuthStore(state => state.activeAccount);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   // Update timer
   useEffect(() => {
-    if (!roundState || roundState.finished) {
+    if (!gameState.started || !roundState || roundState.finished) {
       setTimeLeft(null);
       return;
     }
@@ -91,7 +91,7 @@ export function GameStatus({
     return "Guess what's being drawn!";
   };
 
-  const canStartGame = gameState.creator.toString() === account?.address?.toString() && !gameState.started;
+  const canStartGame = account && gameState.creator.toString() === account.accountAddress.toString() && !gameState.started;
   const canStartNextRound = isCurrentArtist && roundState?.finished;
 
   return (
@@ -109,7 +109,7 @@ export function GameStatus({
           </div>
 
           {/* Timer */}
-          {timeLeft !== null && (
+          {gameState.started && timeLeft !== null && (
             <div className="flex items-center space-x-2">
               <Clock size={20} className={timeLeft <= 10 ? "text-red-500" : "text-gray-500"} />
               <span
@@ -139,7 +139,7 @@ export function GameStatus({
             </Button>
           )}
 
-          {roundState && !roundState.finished && timeLeft !== null && (
+          {gameState.started && roundState && !roundState.finished && timeLeft !== null && (
             <div className="text-sm text-gray-500">
               {timeLeft > 0 ? `${timeLeft}s remaining` : "Time's up!"}
             </div>

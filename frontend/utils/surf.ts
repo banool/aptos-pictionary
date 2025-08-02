@@ -3,7 +3,7 @@ import { Aptos, AccountAddress } from "@aptos-labs/ts-sdk";
 import { PICTIONARY_ABI } from "./abis";
 
 type ABITable = DefaultABITable & {
-    "0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f::pictionary": typeof PICTIONARY_ABI;
+    "0xcc4de567219c07e127d50a6abc450e22deb84a687c6e39876e0618cd104a4a69::pictionary": typeof PICTIONARY_ABI;
   };
 
 // Create the Surf client instance with proper receiver-style API
@@ -17,6 +17,7 @@ export type RawRoundState = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "
 export type RawCanvasState = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "Canvas">;
 export type RawCanvasDelta = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "CanvasDelta">;
 export type RawColor = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "Color">;
+export type RawRoundSummary = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "RoundSummary">;
 
 // Extract event types from the ABI
 export type GameCreatedEvent = ExtractStructType<ABITable, typeof PICTIONARY_ABI, "GameCreated">;
@@ -31,6 +32,8 @@ export interface GameState {
   creator: AccountAddress;
   team0Players: AccountAddress[];
   team1Players: AccountAddress[];
+  team0Name: string;
+  team1Name: string;
   currentTeam0Artist: number;
   currentTeam1Artist: number;
   team0Score: number;

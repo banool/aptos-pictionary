@@ -1,5 +1,14 @@
 import { AccountAddress, Aptos } from "@aptos-labs/ts-sdk";
-import { createPictionarySurfClient, GameState, RoundState, Canvas, orderedMapToCanvas } from "@/utils/surf";
+import { createPictionarySurfClient, GameState, RoundState, Canvas, orderedMapToCanvas, RawRoundSummary } from "@/utils/surf";
+
+export interface RoundResult {
+  roundNumber: number;
+  word: string;
+  team0Points: number;
+  team1Points: number;
+  team0TotalScore: number;
+  team1TotalScore: number;
+}
 
 /**
  * Get game state from the blockchain using Surf receiver-style API
@@ -12,6 +21,8 @@ export const getGame = async (aptos: Aptos, gameAddress: AccountAddress): Promis
       creator,
       team0Players,
       team1Players,
+      team0Name,
+      team1Name,
       currentTeam0Artist,
       currentTeam1Artist,
       team0Score,
@@ -33,6 +44,8 @@ export const getGame = async (aptos: Aptos, gameAddress: AccountAddress): Promis
       creator: AccountAddress.from(creator as string),
       team0Players: (team0Players as string[]).map((addr) => AccountAddress.from(addr)),
       team1Players: (team1Players as string[]).map((addr) => AccountAddress.from(addr)),
+      team0Name: team0Name as string,
+      team1Name: team1Name as string,
       currentTeam0Artist: Number(currentTeam0Artist),
       currentTeam1Artist: Number(currentTeam1Artist),
       team0Score: Number(team0Score),
@@ -116,5 +129,90 @@ export const getCanvas = async (
   } catch (error) {
     console.error("Failed to get canvas data:", error);
     throw new Error("Failed to fetch canvas data");
+  }
+};
+
+/**
+ * Get round history from the blockchain using the get_round_history view function
+ */
+export const getRoundHistory = async (aptos: Aptos, gameAddress: AccountAddress): Promise<RoundResult[]> => {
+  try {
+    const client = createPictionarySurfClient(aptos);
+
+    const rounds = await client.view.get_round_history({
+      functionArguments: [gameAddress.toString()],
+      typeArguments: [],
+    });
+
+    const roundResults: RoundResult[] = [];
+    let team0TotalScore = 0;
+    let team1TotalScore = 0;
+    
+    for (const roundSummary of rounds as unknown as RawRoundSummary[]) {
+      // Calculate points for this round based on guess times
+      let team0Points = 0;
+      let team1Points = 0;
+
+      if (roundSummary.team0_guessed && roundSummary.team1_guessed) {
+        // Both teams guessed - first gets 2 points, second gets 1
+        const team0Time = roundSummary.team0_guess_time ? Number(roundSummary.team0_guess_time) : null;
+        const team1Time = roundSummary.team1_guess_time ? Number(roundSummary.team1_guess_time) : null;
+        
+        if (team0Time && team1Time) {
+          if (team0Time <= team1Time) {
+            team0Points = 2;
+            team1Points = 1;
+          } else {
+            team0Points = 1;
+            team1Points = 2;
+          }
+        }
+      } else if (roundSummary.team0_guessed) {
+        team0Points = 2;
+      } else if (roundSummary.team1_guessed) {
+        team1Points = 2;
+      }
+
+      team0TotalScore += team0Points;
+      team1TotalScore += team1Points;
+
+      // Fix the round number parsing - add 1 since rounds are 0-indexed on chain
+      const roundNumber = typeof roundSummary.round_number === 'string' 
+        ? parseInt(roundSummary.round_number) + 1
+        : Number(roundSummary.round_number) + 1;
+
+      roundResults.push({
+        roundNumber,
+        word: roundSummary.word as string,
+        team0Points,
+        team1Points,
+        team0TotalScore,
+        team1TotalScore,
+      });
+    }
+
+    return roundResults;
+  } catch (error) {
+    console.error("Failed to get round history:", error);
+    return [];
+  }
+};
+
+/**
+ * Get the current word for an artist (returns empty string if not artist or round not active)
+ */
+export const getCurrentWordForArtist = async (aptos: Aptos, gameAddress: AccountAddress, playerAddress: AccountAddress): Promise<string> => {
+  try {
+    const client = createPictionarySurfClient(aptos);
+
+    const word = await client.view.get_current_word_for_artist({
+      functionArguments: [gameAddress.toString(), playerAddress.toString()],
+      typeArguments: [],
+    });
+
+    return word[0];
+  } catch (error) {
+    console.error("Failed to get current word for artist:", error);
+    return "";
   }
 };

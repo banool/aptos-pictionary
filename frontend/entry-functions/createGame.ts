@@ -5,6 +5,8 @@ import { PICTIONARY_ABI } from "@/utils/abis";
 export type CreateGameArguments = {
   team0Players: AccountAddress[];
   team1Players: AccountAddress[];
+  team0Name: string;
+  team1Name: string;
   targetScore: number;
   canvasWidth: number;
   canvasHeight: number;
@@ -21,6 +23,8 @@ export const buildCreateGamePayload = (args: CreateGameArguments) => {
     functionArguments: [
       args.team0Players.map((addr) => addr.toString()),
       args.team1Players.map((addr) => addr.toString()),
+      args.team0Name,
+      args.team1Name,
       args.targetScore,
       args.canvasWidth,
       args.canvasHeight,

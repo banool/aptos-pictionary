@@ -1,19 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
+import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
+import { buildMakeGuessPayload } from "@/entry-functions/gameActions";
+import { getCurrentWordForArtist, getRoundHistory, RoundResult } from "@/view-functions/gameView";
+import { aptos } from "@/utils/aptos";
 
 interface GameSidebarProps {
   gameState: {
     team0Players: AccountAddress[];
     team1Players: AccountAddress[];
+    team0Name: string;
+    team1Name: string;
     team0Score: number;
     team1Score: number;
     targetScore: number;
     currentRound: number;
     finished: boolean;
     winner: number | null;
+    currentTeam0Artist: number;
+    currentTeam1Artist: number;
+    started: boolean;
   };
   roundState: {
     word: string;
@@ -23,47 +32,73 @@ interface GameSidebarProps {
   } | null;
   userTeam: number | null;
   getDisplayName?: (address: AccountAddress) => string;
+  gameAddress: AccountAddress;
 }
 
-interface RoundResult {
-  roundNumber: number;
-  word: string;
-  team0Points: number;
-  team1Points: number;
-  team0TotalScore: number;
-  team1TotalScore: number;
-}
-
-export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }: GameSidebarProps) {
+export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, gameAddress }: GameSidebarProps) {
+  const account = useAuthStore(state => state.activeAccount);
   const [guess, setGuess] = useState("");
-  const [roundResults] = useState<RoundResult[]>([
-    {
-      roundNumber: 1,
-      word: "cat",
-      team0Points: 2,
-      team1Points: 0,
-      team0TotalScore: 2,
-      team1TotalScore: 0,
-    },
-    {
-      roundNumber: 2,
-      word: "house",
-      team0Points: 0,
-      team1Points: 2,
-      team0TotalScore: 2,
-      team1TotalScore: 2,
-    },
-  ]);
+  const [roundResults, setRoundResults] = useState<RoundResult[]>([]);
+  const [currentWordForArtist, setCurrentWordForArtist] = useState<string>("");
+
+  // Load round history from blockchain
+  useEffect(() => {
+    const loadRoundHistory = async () => {
+      try {
+        const history = await getRoundHistory(aptos, gameAddress);
+        setRoundResults(history);
+      } catch (error) {
+        console.error("Failed to load round history:", error);
+      }
+    };
+
+    if (gameState.started) {
+      loadRoundHistory();
+    }
+  }, [gameAddress, gameState.started, gameState.currentRound]);
+
+  // Load current word for artist
+  useEffect(() => {
+    const loadCurrentWord = async () => {
+      if (!account || !gameState.started || gameState.finished) {
+        setCurrentWordForArtist("");
+        return;
+      }
+
+      try {
+        const word = await getCurrentWordForArtist(aptos, gameAddress, account.accountAddress);
+        setCurrentWordForArtist(word);
+      } catch (error) {
+        console.error("Failed to load current word for artist:", error);
+        setCurrentWordForArtist("");
+      }
+    };
+
+    loadCurrentWord();
+  }, [account, gameAddress, gameState.started, gameState.finished, gameState.currentRound]);
 
   const handleSubmitGuess = async () => {
-    if (!guess.trim()) return;
+    if (!guess.trim() || !account) return;
 
     try {
-      // TODO: Call make_guess contract function
-      console.log("Submitting guess:", guess);
+      const payload = buildMakeGuessPayload(gameAddress, guess.trim());
+      
+      const transaction = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
+        data: payload,
+      });
+      await aptos.signAndSubmitTransaction({
+        signer: account,
+        transaction,
+      });
+
       setGuess("");
+      
+      // Reload the page to get updated game state
+      setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       console.error("Failed to submit guess:", error);
+      alert("Failed to submit guess. Please try again.");
     }
   };
 
@@ -79,6 +114,16 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }:
 
   const getPlayerDisplayName = (player: AccountAddress) => {
     return getDisplayName ? getDisplayName(player) : formatAddress(player.toString());
+  };
+
+  const isCurrentArtist = (): boolean => {
+    if (!account || !gameState) return false;
+    
+    const userAddress = account.accountAddress.toString();
+    const team0Artist = gameState.team0Players[gameState.currentTeam0Artist];
+    const team1Artist = gameState.team1Players[gameState.currentTeam1Artist];
+    
+    return team0Artist?.toString() === userAddress || team1Artist?.toString() === userAddress;
   };
 
   return (
@@ -105,7 +150,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }:
         {/* Team 1 */}
         <div className={`mb-4 p-3 rounded-lg ${userTeam === 0 ? "bg-blue-100 border-2 border-blue-300" : "bg-gray-100"}`}>
           <div className="flex justify-between items-center mb-2">
-            <span className="font-medium">Team 1</span>
+            <span className="font-medium">{gameState.team0Name}</span>
             <span className="text-xl font-bold">{gameState.team0Score}</span>
           </div>
           <div className="space-y-1">
@@ -124,7 +169,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }:
         {/* Team 2 */}
         <div className={`p-3 rounded-lg ${userTeam === 1 ? "bg-red-100 border-2 border-red-300" : "bg-gray-100"}`}>
           <div className="flex justify-between items-center mb-2">
-            <span className="font-medium">Team 2</span>
+            <span className="font-medium">{gameState.team1Name}</span>
             <span className="text-xl font-bold">{gameState.team1Score}</span>
           </div>
           <div className="space-y-1">
@@ -151,8 +196,18 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }:
         </div>
       )}
 
-      {/* Guess Input */}
-      {userTeam !== null && !gameState.finished && (
+      {/* Current Word for Artists */}
+      {isCurrentArtist() && currentWordForArtist && gameState.started && !gameState.finished && roundState && !roundState.finished && (
+        <div className="p-4 border-b bg-blue-50">
+          <h4 className="font-semibold mb-2 text-blue-800">Your Word to Draw:</h4>
+          <div className="text-2xl font-bold text-center py-2 bg-white rounded border text-blue-900">
+            {currentWordForArtist}
+          </div>
+        </div>
+      )}
+
+      {/* Guess Input - Only for non-artists */}
+      {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && (
         <div className="p-4 border-b">
           <h4 className="font-semibold mb-3">Make a Guess</h4>
           <div className="flex gap-2">
@@ -174,22 +229,36 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }:
         </div>
       )}
 
+      {/* Artist cannot guess message */}
+      {isCurrentArtist() && gameState.started && !gameState.finished && !roundState?.finished && (
+        <div className="p-4 border-b bg-yellow-50">
+          <h4 className="font-semibold mb-2 text-yellow-800">Artist</h4>
+          <p className="text-sm text-yellow-700">You're the artist this round - draw the word above!</p>
+        </div>
+      )}
+
+      {/* Remove duplicate next round button - it's already in GameStatus */}
+
       {/* Round History */}
       <div className="flex-1 p-4 overflow-y-auto">
         <h4 className="font-semibold mb-3">Round History</h4>
         <div className="space-y-3">
-          {roundResults.map((result) => (
-            <div key={result.roundNumber} className="bg-white p-3 rounded border">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-medium">Round {result.roundNumber}</span>
-                <span className="text-sm text-gray-500">"{result.word}"</span>
+          {roundResults.length === 0 ? (
+            <p className="text-sm text-gray-500">No rounds completed yet</p>
+          ) : (
+            roundResults.map((result) => (
+              <div key={result.roundNumber} className="bg-white p-3 rounded border">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium">Round {result.roundNumber}</span>
+                  <span className="text-sm text-gray-500">"{result.word}"</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                                  <span>{gameState.team0Name}: +{result.team0Points} ({result.team0TotalScore})</span>
+                <span>{gameState.team1Name}: +{result.team1Points} ({result.team1TotalScore})</span>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Team 1: +{result.team1Points} ({result.team0TotalScore})</span>
-                <span>Team 2: +{result.team1Points} ({result.team1TotalScore})</span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -198,7 +267,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName }:
         <div className="p-4 bg-green-50 border-t">
           <div className="text-center">
             <h3 className="text-lg font-bold text-green-800 mb-2">
-              🎉 Team {gameState.winner + 1} Wins!
+              🎉 {gameState.winner === 0 ? gameState.team0Name : gameState.team1Name} Wins!
             </h3>
             <p className="text-sm text-green-600">
               Final Score: {gameState.team0Score} - {gameState.team1Score}

@@ -117,6 +117,10 @@ module pictionary::pictionary {
         team0_players: vector<address>,
         /// List of addresses on team 1 (must have at least 2 players)
         team1_players: vector<address>,
+        /// Name of team 0
+        team0_name: String,
+        /// Name of team 1
+        team1_name: String,
         /// Index of current artist in team0_players vector
         current_team0_artist: u64,
         /// Index of current artist in team1_players vector
@@ -297,6 +301,8 @@ module pictionary::pictionary {
         creator: &signer,
         team0_players: vector<address>,
         team1_players: vector<address>,
+        team0_name: String,
+        team1_name: String,
         target_score: u64,
         canvas_width: u16,
         canvas_height: u16,
@@ -316,6 +322,8 @@ module pictionary::pictionary {
             creator: signer::address_of(creator),
             team0_players,
             team1_players,
+            team0_name: if (string::length(&team0_name) == 0) string::utf8(b"Team 1") else team0_name,
+            team1_name: if (string::length(&team1_name) == 0) string::utf8(b"Team 2") else team1_name,
             current_team0_artist: 0,
             current_team1_artist: 0,
             team0_score: 0,
@@ -328,7 +336,7 @@ module pictionary::pictionary {
             winner: option::none(),
             canvas_width: if (canvas_width == 0) 500 else canvas_width,
             canvas_height: if (canvas_height == 0) 500 else canvas_height,
-            round_duration: if (round_duration == 0) 30 else round_duration,
+            round_duration: if (round_duration == 0) 60 else round_duration,
             extend_ref,
         };
 
@@ -344,10 +352,10 @@ module pictionary::pictionary {
         move_to(&game_signer, game);
     }
 
+    #[randomness]
     // Starts the game and begins the first round (only creator can do this)
     // Uses on-chain randomness to select the first word
-    #[lint::allow_unsafe_randomness]
-    public entry fun start_game(creator: &signer, game_address: address) acquires Game, WordList {
+    entry fun start_game(creator: &signer, game_address: address) acquires Game, WordList {
         let game = borrow_global_mut<Game>(game_address);
         assert!(game.creator == signer::address_of(creator), ENOT_AUTHORIZED);
         assert!(!game.started, EGAME_ALREADY_STARTED);
@@ -500,6 +508,7 @@ module pictionary::pictionary {
 
     /// Submits a guess for the current round
     /// Automatically awards points if the guess is correct
+    /// Artists cannot make guesses, only other team members can
     public entry fun make_guess(
         guesser: &signer,
         game_address: address,
@@ -514,6 +523,11 @@ module pictionary::pictionary {
         
         // Determine which team the guesser is on first (before borrowing round mutably)
         let team = get_player_team(game, guesser_address);
+        
+        // Check that guesser is not the current artist
+        let is_team0_artist = *vector::borrow(&game.team0_players, game.current_team0_artist) == guesser_address;
+        let is_team1_artist = *vector::borrow(&game.team1_players, game.current_team1_artist) == guesser_address;
+        assert!(!is_team0_artist && !is_team1_artist, ENOT_ARTIST_TURN); // Reusing error code - artists can't guess
         
         let round = vector::borrow_mut(&mut game.rounds, current_round_index);
         assert!(!round.finished, EROUND_NOT_ACTIVE);
@@ -652,10 +666,10 @@ module pictionary::pictionary {
         };
     }
 
+    #[randomness]
     // Starts the next round (can be called by either current artist)
     // Only allowed after current round is finished
-    #[lint::allow_unsafe_randomness]
-    public entry fun next_round(caller: &signer, game_address: address) acquires Game, WordList {
+    entry fun next_round(caller: &signer, game_address: address) acquires Game, WordList {
         let game = borrow_global<Game>(game_address);
         assert!(game.started, EGAME_NOT_STARTED);
         assert!(!game.finished, EGAME_FINISHED);
@@ -684,6 +698,8 @@ module pictionary::pictionary {
         address, // creator
         vector<address>, // team0_players
         vector<address>, // team1_players
+        String, // team0_name
+        String, // team1_name
         u64, // current_team0_artist
         u64, // current_team1_artist
         u64, // team0_score
@@ -702,6 +718,8 @@ module pictionary::pictionary {
             game.creator,
             game.team0_players,
             game.team1_players,
+            game.team0_name,
+            game.team1_name,
             game.current_team0_artist,
             game.current_team1_artist,
             game.team0_score,
@@ -774,6 +792,69 @@ module pictionary::pictionary {
         };
 
         canvas.pixels
+    }
+
+    /// Simple round summary that can be copied (for view functions)
+    struct RoundSummary has copy, drop {
+        round_number: u64,
+        word: String,
+        team0_guessed: bool,
+        team1_guessed: bool,
+        team0_guess_time: Option<u64>,
+        team1_guess_time: Option<u64>,
+        finished: bool,
+    }
+
+    #[view]
+    /// Returns the round history for a game as copyable summaries
+    public fun get_round_history(game_address: address): vector<RoundSummary> acquires Game {
+        let game = borrow_global<Game>(game_address);
+        let summaries = vector::empty<RoundSummary>();
+        
+        let i = 0;
+        while (i < vector::length(&game.rounds)) {
+            let round = vector::borrow(&game.rounds, i);
+            let summary = RoundSummary {
+                round_number: round.round_number,
+                word: round.word,
+                team0_guessed: round.team0_guessed,
+                team1_guessed: round.team1_guessed,
+                team0_guess_time: round.team0_guess_time,
+                team1_guess_time: round.team1_guess_time,
+                finished: round.finished,
+            };
+            vector::push_back(&mut summaries, summary);
+            i = i + 1;
+        };
+        
+        summaries
+    }
+
+    #[view]
+    /// Returns the word for the current round (only if you're an artist or round is finished)
+    public fun get_current_word_for_artist(game_address: address, player: address): String acquires Game {
+        let game = borrow_global<Game>(game_address);
+        if (game.current_round == 0) {
+            return string::utf8(b"")
+        };
+
+        let current_round_index = game.current_round - 1;
+        let round = vector::borrow(&game.rounds, current_round_index);
+        
+        // Return word if round is finished or if player is current artist
+        if (round.finished) {
+            return round.word
+        };
+        
+        // Check if player is current artist
+        let is_team0_artist = *vector::borrow(&game.team0_players, game.current_team0_artist) == player;
+        let is_team1_artist = *vector::borrow(&game.team1_players, game.current_team1_artist) == player;
+        
+        if (is_team0_artist || is_team1_artist) {
+            round.word
+        } else {
+            string::utf8(b"")
+        }
     }
 
     /// Updates the global word list used for random word selection

@@ -5,11 +5,11 @@ This guide walks you through deploying and testing the complete Aptos Pictionary
 ## 🚀 Quick Deploy
 
 ### 1. Fund the Deployment Account
-The deployment account has been created: `0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f`
+The deployment account has been created: `0x31f4d31b938aca86a5efcf56aed7141500b49029d5697c338d1125713397dedd`
 
 **Visit the testnet faucet to fund it:**
 ```
-https://aptos.dev/network/faucet?address=0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f
+https://aptos.dev/network/faucet?address=0x31f4d31b938aca86a5efcf56aed7141500b49029d5697c338d1125713397dedd
 ```
 
 ### 2. Deploy the Contract
@@ -173,7 +173,7 @@ We use [Surf](https://github.com/ThalaLabs/surf). Surf requires the ABI of the M
 
 Run this to get the ABIs as JSON:
 ```
-curl -s https://api.testnet.aptoslabs.com/v1/accounts/0x6038c25eb61cf10831f50b3ba11006e3fef8a0cac0de6eeb4b57cdccfbec344f/modules | jq .[].abi | pbcopy
+curl -s https://api.testnet.aptoslabs.com/v1/accounts/0x31f4d31b938aca86a5efcf56aed7141500b49029d5697c338d1125713397dedd/modules | jq .[].abi | pbcopy
 ```
 
 Paste those into this file:

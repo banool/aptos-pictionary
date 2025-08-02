@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { Routes, Route, useNavigate, useParams } from "react-router-dom";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 // Internal Components
 import { Header } from "@/components/Header";
 import { GameInterface } from "@/components/GameInterface";
 import { CreateGameModal } from "@/components/CreateGameModal";
+import { useAuthStore } from "@/store/auth";
 
 // Home page component
 function HomePage() {
-  const { connected } = useWallet();
+  const activeAccount = useAuthStore(state => state.activeAccount);
   const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -25,9 +25,9 @@ function HomePage() {
 
   return (
     <>
-      <Header onCreateGame={connected ? handleCreateGame : undefined} />
+      <Header onCreateGame={activeAccount ? handleCreateGame : undefined} />
       <div className="flex-1 flex">
-        {connected ? (
+        {activeAccount ? (
           <div className="flex items-center justify-center flex-col flex-1">
             <div className="card text-center">
               <h1 className="text-2xl font-bold mb-4">Welcome to Aptos Pictionary!</h1>
@@ -39,9 +39,9 @@ function HomePage() {
         ) : (
           <div className="flex items-center justify-center flex-col flex-1">
             <div className="card text-center">
-              <h1 className="text-xl font-bold mb-4">Connect Your Wallet</h1>
+              <h1 className="text-xl font-bold mb-4">Sign in to Play</h1>
               <p className="text-muted-foreground">
-                To get started, please connect your Aptos wallet.
+                To get started, please sign in with your Google account.
               </p>
             </div>
           </div>
@@ -59,7 +59,7 @@ function HomePage() {
 
 // Game page component
 function GamePage() {
-  const { connected } = useWallet();
+  const activeAccount = useAuthStore(state => state.activeAccount);
   const navigate = useNavigate();
   const { gameAddress } = useParams<{ gameAddress: string }>();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -86,14 +86,14 @@ function GamePage() {
 
   return (
     <>
-      <Header onCreateGame={connected ? handleCreateGame : undefined} />
+      <Header onCreateGame={activeAccount ? handleCreateGame : undefined} />
       <div className="flex-1 flex">
-        {!connected ? (
+        {!activeAccount ? (
           <div className="flex items-center justify-center flex-col flex-1">
             <div className="card text-center">
-              <h1 className="text-xl font-bold mb-4">Connect Your Wallet</h1>
+              <h1 className="text-xl font-bold mb-4">Sign in Required</h1>
               <p className="text-muted-foreground">
-                To view and play games, please connect your Aptos wallet.
+                To view and play games, please sign in with your Google account.
               </p>
             </div>
           </div>

@@ -1,9 +1,13 @@
+// import { APTOS_API_KEY } from "@/constants";
 import { APTOS_API_KEY } from "@/constants";
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
 // Initialize Aptos client for testnet with API key from Aptos Build
 const aptosConfig = new AptosConfig({
   network: Network.TESTNET,
+  clientConfig: {
+    API_KEY: APTOS_API_KEY,
+  },
 });
 
 export const aptos = new Aptos(aptosConfig);

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Palette, Eraser } from "lucide-react";
+import { Palette, Eraser, Send } from "lucide-react";
 import { CanvasDelta } from "@/utils/surf";
 
 interface GameCanvasProps {
@@ -9,6 +9,7 @@ interface GameCanvasProps {
   height: number;
   canDraw: boolean;
   userTeam: number | null;
+  onCanvasUpdate?: (deltas: CanvasDelta[]) => Promise<void>;
 }
 
 
@@ -36,6 +37,7 @@ export function GameCanvas({
   height,
   canDraw,
   userTeam,
+  onCanvasUpdate,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -82,8 +84,12 @@ export function GameCanvas({
   );
 
   // Convert 2D position to 1D array position
+  // Use smaller coordinate system to fit in u16 (0-65535)
   const positionToIndex = (x: number, y: number): number => {
-    return Math.floor(y) * width + Math.floor(x);
+    // Scale down coordinates to fit in u16 range
+    const scaledX = Math.floor((x / width) * 255);  // Scale to 0-255
+    const scaledY = Math.floor((y / height) * 255); // Scale to 0-255
+    return scaledY * 256 + scaledX; // Max value: 255 * 256 + 255 = 65535
   };
 
   // Draw on canvas and create delta
@@ -131,7 +137,7 @@ export function GameCanvas({
 
   const handleMouseUp = () => {
     setIsDrawing(false);
-    flushDeltas();
+    // Don't auto-flush on mouse up anymore
   };
 
   // Flush pending deltas to blockchain
@@ -140,27 +146,19 @@ export function GameCanvas({
 
     try {
       console.log("Flushing deltas to blockchain:", pendingDeltas);
-      // TODO: Implement actual canvas delta submission
-      // This would require wallet integration at the canvas level
-      // For now, just log the deltas
+      
+      if (onCanvasUpdate) {
+        await onCanvasUpdate(pendingDeltas);
+      }
       
       // Clear pending deltas after successful submission
       setPendingDeltas([]);
     } catch (error) {
       console.error("Failed to flush deltas:", error);
     }
-  }, [pendingDeltas, gameAddress, userTeam]);
+  }, [pendingDeltas, onCanvasUpdate]);
 
-  // Auto-flush deltas every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (pendingDeltas.length > 0) {
-        flushDeltas();
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [pendingDeltas, flushDeltas]);
+  // Remove auto-flush - will be manual now
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
@@ -254,6 +252,18 @@ export function GameCanvas({
             />
             <span className="text-sm w-6">{brushSize}</span>
           </div>
+
+          {/* Flush Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={flushDeltas}
+            disabled={pendingDeltas.length === 0}
+            className="flex items-center gap-2"
+          >
+            <Send size={16} />
+            Submit ({pendingDeltas.length})
+          </Button>
 
           {/* Clear Button */}
           <Button

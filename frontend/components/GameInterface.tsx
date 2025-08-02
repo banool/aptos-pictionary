@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
+import { useAuthStore } from "@/store/auth";
 import { GameCanvas } from "@/components/GameCanvas";
 import { GameSidebar } from "@/components/GameSidebar";
 import { GameStatus } from "@/components/GameStatus";
-import { buildStartGamePayload, buildNextRoundPayload } from "@/entry-functions/gameActions";
+import { buildStartGamePayload, buildNextRoundPayload, buildSubmitCanvasDeltaPayload } from "@/entry-functions/gameActions";
 import { aptos } from "@/utils/aptos";
 import { getGame, getCurrentRound } from "@/view-functions/gameView";
-import { GameState, RoundState } from "@/utils/surf";
+import { GameState, RoundState, CanvasDelta } from "@/utils/surf";
 
 interface GameInterfaceProps {
   gameAddress: AccountAddress;
@@ -16,7 +16,7 @@ interface GameInterfaceProps {
 
 
 export function GameInterface({ gameAddress }: GameInterfaceProps) {
-  const { account, connected, signAndSubmitTransaction } = useWallet();
+  const account = useAuthStore(state => state.activeAccount);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
   const [ansNames, setAnsNames] = useState<Record<string, string | null>>({});
@@ -45,10 +45,10 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
       }
     };
 
-    if (connected && gameAddress) {
+    if (account && gameAddress) {
       loadGameState();
     }
-  }, [connected, gameAddress, account]);
+  }, [account, gameAddress]);
 
   // Function to resolve account addresses to ANS names
   const resolveAnsNames = async (addresses: AccountAddress[]) => {
@@ -61,7 +61,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
           const ansName = await aptos.ans.getPrimaryName({ address: addressStr });
           newAnsNames[addressStr] = ansName || null;
         } catch (err) {
-          console.log(`No ANS name found for address: ${addressStr}`);
+          console.log(`No ANS name found for address: ${addressStr}`, err);
           newAnsNames[addressStr] = null;
         }
       }
@@ -87,7 +87,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
   const getUserTeam = (): number | null => {
     if (!account || !gameState) return null;
     
-    const userAddress = account.address.toString();
+    const userAddress = account.accountAddress.toString();
     if (gameState.team0Players.some(addr => addr.toString() === userAddress)) return 0;
     if (gameState.team1Players.some(addr => addr.toString() === userAddress)) return 1;
     return null;
@@ -110,7 +110,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     const userTeam = getUserTeam();
     if (userTeam === null) return false;
     
-    const userAddress = account.address.toString();
+    const userAddress = account.accountAddress.toString();
     if (userTeam === 0) {
       return gameState.team0Players[gameState.currentTeam0Artist].toString() === userAddress;
     } else {
@@ -127,9 +127,13 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     try {
       const payload = buildStartGamePayload(gameAddress);
       
-      await signAndSubmitTransaction({
-        sender: account.address,
+      const transaction = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
         data: payload,
+      });
+      await aptos.signAndSubmitTransaction({
+        signer: account,
+        transaction,
       });
 
       // Reload game state after starting
@@ -149,9 +153,13 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     try {
       const payload = buildNextRoundPayload(gameAddress);
       
-      await signAndSubmitTransaction({
-        sender: account.address,
+      const transaction = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
         data: payload,
+      });
+      await aptos.signAndSubmitTransaction({
+        signer: account,
+        transaction,
       });
 
       // Reload game state after starting next round
@@ -160,6 +168,31 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
       console.error("Failed to start next round:", error);
       alert("Failed to start next round. Please try again.");
     }
+  };
+
+  const handleCanvasUpdate = async (deltas: CanvasDelta[]) => {
+    if (!account || !gameState) {
+      throw new Error("Not connected or no game state");
+    }
+
+    const userTeam = getUserTeam();
+    if (userTeam === null) {
+      throw new Error("User is not in a team");
+    }
+
+    const positions = deltas.map(d => d.position);
+    const colors = deltas.map(d => d.color);
+
+    const payload = buildSubmitCanvasDeltaPayload(gameAddress, userTeam, positions, colors);
+    
+    const transaction = await aptos.transaction.build.simple({
+      sender: account.accountAddress,
+      data: payload,
+    });
+    await aptos.signAndSubmitTransaction({
+      signer: account,
+      transaction,
+    });
   };
 
   if (loading) {
@@ -218,8 +251,9 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
             gameAddress={gameAddress.toString()}
             width={gameState.canvasWidth}
             height={gameState.canvasHeight}
-            canDraw={isCurrentArtist() && gameState.started && !gameState.finished}
+            canDraw={isCurrentArtist() && gameState.started && !gameState.finished && roundState !== null && !roundState.finished}
             userTeam={getUserTeam()}
+            onCanvasUpdate={handleCanvasUpdate}
           />
         </div>
       </div>
@@ -230,6 +264,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
         roundState={roundState}
         userTeam={getUserTeam()}
         getDisplayName={getDisplayName}
+        gameAddress={gameAddress}
       />
     </div>
   );
