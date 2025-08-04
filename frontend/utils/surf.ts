@@ -36,8 +36,8 @@ export interface GameState {
   team1Name: string;
   currentTeam0Artist: number;
   currentTeam1Artist: number;
-  team0Score: number;  // Now derived from completed rounds
-  team1Score: number;  // Now derived from completed rounds
+  team0Score: number; // Now derived from completed rounds
+  team1Score: number; // Now derived from completed rounds
   targetScore: number;
   currentRound: number; // Now derived from rounds vector length
   started: boolean;
@@ -93,25 +93,25 @@ export const parseOrderedMap = <K, V>(serializedMap: SerializedOrderedMap<K, V>)
 
 // Color variant mapping from Move enum to numeric values
 const COLOR_VARIANT_MAP: { [key: string]: number } = {
-  "Black": 0,
-  "White": 1,
-  "Red": 2,
-  "Green": 3,
-  "Blue": 4,
-  "Yellow": 5,
-  "Orange": 6,
-  "Purple": 7,
-  "Pink": 8,
-  "Brown": 9,
-  "Gray": 10,
+  Black: 0,
+  White: 1,
+  Red: 2,
+  Green: 3,
+  Blue: 4,
+  Yellow: 5,
+  Orange: 6,
+  Purple: 7,
+  Pink: 8,
+  Brown: 9,
+  Gray: 10,
 };
 
 // Helper function to convert color variant object to numeric value
 const convertColorVariant = (colorVariant: unknown): number => {
-  if (typeof colorVariant === 'number') {
+  if (typeof colorVariant === "number") {
     return colorVariant;
   }
-  if (colorVariant && typeof colorVariant === 'object' && colorVariant !== null && '__variant__' in colorVariant) {
+  if (colorVariant && typeof colorVariant === "object" && colorVariant !== null && "__variant__" in colorVariant) {
     const variantName = (colorVariant as { __variant__: string }).__variant__;
     return COLOR_VARIANT_MAP[variantName] ?? 0; // Default to Black if unknown
   }
@@ -121,8 +121,8 @@ const convertColorVariant = (colorVariant: unknown): number => {
 // Helper function to convert OrderedMap to Canvas format for UI rendering
 export const orderedMapToCanvas = (serializedMap: unknown): Canvas => {
   const canvas: Canvas = {};
-  if (serializedMap && typeof serializedMap === 'object' && serializedMap !== null && 'entries' in serializedMap) {
-    const mapWithEntries = serializedMap as { entries: Array<{ key: number, value: unknown }> };
+  if (serializedMap && typeof serializedMap === "object" && serializedMap !== null && "entries" in serializedMap) {
+    const mapWithEntries = serializedMap as { entries: Array<{ key: number; value: unknown }> };
     mapWithEntries.entries.forEach(({ key, value }) => {
       canvas[key] = convertColorVariant(value);
     });

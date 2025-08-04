@@ -4,20 +4,20 @@ import { aptos } from "@/utils/aptos";
 
 // Query key factory for ANS queries
 const ansKeys = {
-  all: ['ans'] as const,
-  primaryName: (address: string) => [...ansKeys.all, 'primaryName', address] as const,
-  targetAddress: (name: string) => [...ansKeys.all, 'targetAddress', name] as const,
+  all: ["ans"] as const,
+  primaryName: (address: string) => [...ansKeys.all, "primaryName", address] as const,
+  targetAddress: (name: string) => [...ansKeys.all, "targetAddress", name] as const,
 };
 
 // Hook to get primary ANS name for an address
 export function useAnsPrimaryName(address: string | AccountAddress | null) {
   const addressStr = address?.toString() ?? null;
-  
+
   return useQuery({
-    queryKey: ansKeys.primaryName(addressStr ?? ''),
+    queryKey: ansKeys.primaryName(addressStr ?? ""),
     queryFn: async () => {
       if (!addressStr) return null;
-      
+
       try {
         const ansName = await aptos.ans.getPrimaryName({ address: addressStr });
         return ansName || null;
@@ -34,10 +34,10 @@ export function useAnsPrimaryName(address: string | AccountAddress | null) {
 
 // Hook to get multiple ANS names for multiple addresses
 export function useAnsMultiplePrimaryNames(addresses: (string | AccountAddress)[]) {
-  const addressStrings = addresses.map(addr => addr.toString());
-  
+  const addressStrings = addresses.map((addr) => addr.toString());
+
   return useQueries({
-    queries: addressStrings.map(address => ({
+    queries: addressStrings.map((address) => ({
       queryKey: ansKeys.primaryName(address),
       queryFn: async () => {
         try {
@@ -50,17 +50,17 @@ export function useAnsMultiplePrimaryNames(addresses: (string | AccountAddress)[
       },
       staleTime: 24 * 60 * 60 * 1000, // 24 hours
       gcTime: 48 * 60 * 60 * 1000, // 48 hours
-    }))
+    })),
   });
 }
 
 // Hook to resolve ANS name to address
 export function useAnsTargetAddress(name: string | null) {
   return useQuery({
-    queryKey: ansKeys.targetAddress(name ?? ''),
+    queryKey: ansKeys.targetAddress(name ?? ""),
     queryFn: async () => {
       if (!name) return null;
-      
+
       try {
         const targetAddress = await aptos.ans.getTargetAddress({ name });
         return targetAddress || null;
@@ -69,7 +69,7 @@ export function useAnsTargetAddress(name: string | null) {
         return null;
       }
     },
-    enabled: !!name && name.endsWith('.apt'),
+    enabled: !!name && name.endsWith(".apt"),
     staleTime: 24 * 60 * 60 * 1000, // 24 hours
     gcTime: 48 * 60 * 60 * 1000, // 48 hours
   });
@@ -80,7 +80,7 @@ export function getDisplayName(address: string | AccountAddress, ansName: string
   if (ansName) {
     return ansName;
   }
-  
+
   const addressStr = address.toString();
 
   if (addressStr.length <= 10) {

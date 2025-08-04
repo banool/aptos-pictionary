@@ -31,10 +31,7 @@ export interface CalculatedScores {
  * Calculate current scores including points from unprocessed rounds
  * This handles the case where teams have guessed correctly but the round hasn't been processed on-chain yet
  */
-export function calculateCurrentScores(
-  gameState: GameState,
-  roundState: RoundState | null
-): CalculatedScores {
+export function calculateCurrentScores(gameState: GameState, roundState: RoundState | null): CalculatedScores {
   let team0Score = gameState.team0Score; // Start with processed scores from contract
   let team1Score = gameState.team1Score;
 
@@ -45,7 +42,7 @@ export function calculateCurrentScores(
     const roundEndTime = roundState.startTime + roundState.durationSeconds;
     const roundTimeExpired = currentTime > roundEndTime;
     const bothTeamsGuessed = roundState.team0Guessed && roundState.team1Guessed;
-    
+
     // If round should be finished (time expired or both guessed), calculate potential points
     if (roundTimeExpired || bothTeamsGuessed || roundState.finished) {
       if (roundState.team0Guessed && roundState.team1Guessed) {

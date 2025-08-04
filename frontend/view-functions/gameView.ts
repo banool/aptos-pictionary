@@ -53,7 +53,7 @@ export const getGame = async (aptos: Aptos, gameAddress: AccountAddress): Promis
       currentRound,
       started,
       finished,
-      gameAddress: gameAddress.toString()
+      gameAddress: gameAddress.toString(),
     });
 
     const gameState = {
@@ -79,7 +79,7 @@ export const getGame = async (aptos: Aptos, gameAddress: AccountAddress): Promis
     console.log("Processed game state:", {
       team0Score: gameState.team0Score,
       team1Score: gameState.team1Score,
-      currentRound: gameState.currentRound
+      currentRound: gameState.currentRound,
     });
 
     return gameState;
@@ -141,7 +141,7 @@ export const getCanvas = async (
     console.log("getCanvas called with:", {
       gameAddress: gameAddress.toString(),
       roundNumber,
-      team
+      team,
     });
 
     const client = createPictionarySurfClient(aptos);
@@ -158,7 +158,7 @@ export const getCanvas = async (
     // Surf returns the result as an array, so we need the first element
     const canvasData = (orderedMapResult as unknown[])[0] as { entries: Array<{ key: number; value: number }> };
     const canvas = orderedMapToCanvas(canvasData);
-    
+
     console.log("Processed canvas data:", canvas);
     return canvas;
   } catch (error) {
@@ -166,7 +166,7 @@ export const getCanvas = async (
       gameAddress: gameAddress.toString(),
       roundNumber,
       team,
-      error
+      error,
     });
     throw new Error("Failed to fetch canvas data");
   }
@@ -176,9 +176,9 @@ export const getCanvas = async (
  * Get round history from the blockchain using the get_round_history view function
  */
 export const getRoundHistory = async (
-  aptos: Aptos, 
-  gameAddress: AccountAddress, 
-  currentRound?: number
+  aptos: Aptos,
+  gameAddress: AccountAddress,
+  currentRound?: number,
 ): Promise<RoundResult[]> => {
   try {
     const client = createPictionarySurfClient(aptos);
@@ -189,7 +189,7 @@ export const getRoundHistory = async (
     });
 
     console.log("Raw rounds data from contract:", rounds);
-    
+
     // Handle the rounds array - it might be nested
     const roundsArray = Array.isArray(rounds) ? rounds : (rounds as unknown as [RawRoundSummary[]])[0];
     console.log("Processed rounds array:", roundsArray);
@@ -206,22 +206,21 @@ export const getRoundHistory = async (
 
     for (const roundSummary of roundsArray) {
       console.log("Processing round summary:", roundSummary);
-      
+
       // Cast to RawRoundSummary for proper typing
       const round = roundSummary as RawRoundSummary;
-      
+
       // Parse round number
-      const roundNum = typeof round.round_number === "string" 
-        ? parseInt(round.round_number, 10)
-        : Number(round.round_number) || 0;
+      const roundNum =
+        typeof round.round_number === "string" ? parseInt(round.round_number, 10) : Number(round.round_number) || 0;
 
       // Derive finished status from multiple indicators
       let isFinished = false;
-      
+
       if (round.team0_guessed && round.team1_guessed) {
         // Round is finished if both teams have guessed
         isFinished = true;
-      } else if (currentRound !== undefined && roundNum < (currentRound - 1)) {
+      } else if (currentRound !== undefined && roundNum < currentRound - 1) {
         // Round is finished if it's before the current round (accounting for 0-based vs 1-based)
         isFinished = true;
       } else if (round.start_time && round.duration_seconds) {
@@ -230,15 +229,17 @@ export const getRoundHistory = async (
         const roundEndTime = Number(round.start_time) + Number(round.duration_seconds);
         isFinished = currentTime > roundEndTime;
       }
-      
-      console.log("Round finished status:", { 
+
+      console.log("Round finished status:", {
         derivedFinished: isFinished,
         roundNumber: roundNum,
         currentRound,
         bothGuessed: round.team0_guessed && round.team1_guessed,
-        timeExpired: round.start_time && round.duration_seconds ? 
-          (Date.now() / 1000) > (Number(round.start_time) + Number(round.duration_seconds)) : false,
-        comparison: currentRound ? `${roundNum} < ${currentRound - 1}` : 'no current round'
+        timeExpired:
+          round.start_time && round.duration_seconds
+            ? Date.now() / 1000 > Number(round.start_time) + Number(round.duration_seconds)
+            : false,
+        comparison: currentRound ? `${roundNum} < ${currentRound - 1}` : "no current round",
       });
 
       // Only include finished/completed rounds in history
@@ -278,12 +279,12 @@ export const getRoundHistory = async (
       const roundNumber = roundNum + 1;
 
       // Handle word display - show placeholder for empty words
-      const rawWord = round.word as string || "";
+      const rawWord = (round.word as string) || "";
       const word = rawWord.trim() !== "" ? rawWord : "***";
-      console.log("Adding round to history:", { 
-        roundNumber, 
-        rawWord, 
-        displayWord: word, 
+      console.log("Adding round to history:", {
+        roundNumber,
+        rawWord,
+        displayWord: word,
         finished: isFinished,
         startTime: round.start_time,
         duration: round.duration_seconds,
@@ -294,7 +295,7 @@ export const getRoundHistory = async (
         team0Guessed: round.team0_guessed,
         team1Guessed: round.team1_guessed,
         team0GuessTime: round.team0_guess_time,
-        team1GuessTime: round.team1_guess_time
+        team1GuessTime: round.team1_guess_time,
       });
 
       roundResults.push({

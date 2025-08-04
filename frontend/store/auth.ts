@@ -197,16 +197,16 @@ const useAuthStore = create<KeylessAccountsState & KeylessAccountsActions>()(
 
         // First, check if we have a stored account for this user
         const storedAccount = get().accounts.find((a) => a.idToken.decoded.sub === decodedToken.sub);
-        
+
         // Check if we have an activeAccount that matches this user and is still valid
         const currentActiveAccount = get().activeAccount;
         if (currentActiveAccount && storedAccount) {
           try {
             // Validate that the current active account matches this user
-            const currentAccountIdToken = validateIdToken(currentActiveAccount.jwt || '');
+            const currentAccountIdToken = validateIdToken(currentActiveAccount.jwt || "");
             if (currentAccountIdToken && currentAccountIdToken.sub === decodedToken.sub) {
               console.log("✅ Reusing existing valid KeylessAccount - NO API CALL needed");
-              
+
               // Update the stored account with the new token but keep existing account
               set({
                 accounts: get().accounts.map((a) =>
@@ -229,7 +229,7 @@ const useAuthStore = create<KeylessAccountsState & KeylessAccountsActions>()(
 
         if (storedAccount) {
           console.log("📝 Found stored account, attempting derivation with stored pepper");
-          
+
           const ephemeralKeyPair = get().getEphemeralKeyPair();
           if (ephemeralKeyPair && ephemeralKeyPair.nonce === decodedToken.nonce) {
             try {
@@ -326,25 +326,28 @@ const useAuthStore = create<KeylessAccountsState & KeylessAccountsActions>()(
           });
         } catch (error: any) {
           console.error("Failed to derive keyless account with pepper service:", error);
-          
+
           // Check if it's a JSON parsing error from service overload
           const errorMessage = error?.message || error?.toString() || "";
-          const isJSONParsingError = errorMessage.includes("Unexpected token") || 
-                                   errorMessage.includes("SyntaxError") ||
-                                   errorMessage.includes("Per keyles") ||
-                                   error instanceof SyntaxError;
-          
+          const isJSONParsingError =
+            errorMessage.includes("Unexpected token") ||
+            errorMessage.includes("SyntaxError") ||
+            errorMessage.includes("Per keyles") ||
+            error instanceof SyntaxError;
+
           const isRateLimit = errorMessage.includes("429") || errorMessage.includes("Too Many Requests");
           const isServiceError = errorMessage.includes("404") || errorMessage.includes("Not Found");
-          
+
           // Handle JSON parsing errors (indicates service returning HTML instead of JSON)
           if (isJSONParsingError || isRateLimit || isServiceError) {
             console.warn("Keyless service is overloaded or unavailable, attempting fallback with stored pepper");
-            
+
             if (!storedAccount?.pepper) {
-              throw new Error("Keyless authentication service is temporarily overloaded. Please try again in 5-10 minutes, or contact support if this persists.");
+              throw new Error(
+                "Keyless authentication service is temporarily overloaded. Please try again in 5-10 minutes, or contact support if this persists.",
+              );
             }
-            
+
             // Try with stored pepper as fallback
             try {
               derivedAccount = await aptos.deriveKeylessAccount({
@@ -356,11 +359,13 @@ const useAuthStore = create<KeylessAccountsState & KeylessAccountsActions>()(
             } catch (fallbackError: any) {
               console.error("Fallback pepper derivation also failed:", fallbackError);
               const fallbackErrorMessage = fallbackError?.message || fallbackError?.toString() || "";
-              
+
               if (fallbackErrorMessage.includes("Unexpected token") || fallbackErrorMessage.includes("SyntaxError")) {
-                throw new Error("Keyless authentication service is temporarily overloaded. Please try again in 5-10 minutes.");
+                throw new Error(
+                  "Keyless authentication service is temporarily overloaded. Please try again in 5-10 minutes.",
+                );
               }
-              
+
               throw new Error("Authentication failed. Please clear your browser storage and try signing in again.");
             }
           } else {
@@ -528,48 +533,51 @@ export const clearAuthStorage = () => {
 
 // Helper function for service overload issues
 export const handleServiceOverload = () => {
-  console.warn('🚨 Aptos Keyless Service Overload Detected');
-  console.log('The Aptos testnet keyless authentication service is experiencing high load.');
-  console.log('');
-  console.log('Options:');
-  console.log('1. Wait 5-10 minutes and try again');
-  console.log('2. Clear storage and start fresh: clearAuthStorage()');
-  console.log('3. Contact support if issue persists for hours');
-  console.log('');
-  console.log('Current status: Service returning HTML instead of JSON responses');
+  console.warn("🚨 Aptos Keyless Service Overload Detected");
+  console.log("The Aptos testnet keyless authentication service is experiencing high load.");
+  console.log("");
+  console.log("Options:");
+  console.log("1. Wait 5-10 minutes and try again");
+  console.log("2. Clear storage and start fresh: clearAuthStorage()");
+  console.log("3. Contact support if issue persists for hours");
+  console.log("");
+  console.log("Current status: Service returning HTML instead of JSON responses");
 };
 
 // Helper function to debug authentication state
 export const debugAuthState = () => {
   const state = useAuthStore.getState();
-  console.log('🔍 Current Authentication State:');
-  console.log('');
-  console.log('Stored Accounts:', state.accounts.length);
+  console.log("🔍 Current Authentication State:");
+  console.log("");
+  console.log("Stored Accounts:", state.accounts.length);
   state.accounts.forEach((account, i) => {
     console.log(`  ${i + 1}. User: ${account.idToken.decoded.sub}`);
-    console.log(`     Email: ${account.idToken.decoded.email || 'N/A'}`);
-    console.log(`     Has Pepper: ${account.pepper ? 'Yes' : 'No'}`);
+    console.log(`     Email: ${account.idToken.decoded.email || "N/A"}`);
+    console.log(`     Has Pepper: ${account.pepper ? "Yes" : "No"}`);
   });
-  console.log('');
-  console.log('Active Account:', state.activeAccount ? 'Yes' : 'No');
+  console.log("");
+  console.log("Active Account:", state.activeAccount ? "Yes" : "No");
   if (state.activeAccount) {
-    console.log('  Has Proof:', state.activeAccount.proof ? 'Yes' : 'No');
-    console.log('  Address:', state.activeAccount.accountAddress.toString());
+    console.log("  Has Proof:", state.activeAccount.proof ? "Yes" : "No");
+    console.log("  Address:", state.activeAccount.accountAddress.toString());
     if (state.activeAccount.jwt) {
       try {
         const decoded = jwtDecode(state.activeAccount.jwt);
-        console.log('  User:', (decoded as any).sub);  
-        console.log('  Email:', (decoded as any).email || 'N/A');
+        console.log("  User:", (decoded as any).sub);
+        console.log("  Email:", (decoded as any).email || "N/A");
       } catch (e) {
-        console.log('  JWT: Invalid');
+        console.log("  JWT: Invalid");
       }
     }
   }
-  console.log('');
-  console.log('Ephemeral Key Pair:', state.ephemeralKeyPair ? 'Yes' : 'No');
-  console.log('Has Hydrated:', state._hasHydrated);
-  console.log('');
-  console.log('Next login should use:', state.activeAccount ? '✅ Stored account (NO API call)' : '🚨 Full derivation (API call)');
+  console.log("");
+  console.log("Ephemeral Key Pair:", state.ephemeralKeyPair ? "Yes" : "No");
+  console.log("Has Hydrated:", state._hasHydrated);
+  console.log("");
+  console.log(
+    "Next login should use:",
+    state.activeAccount ? "✅ Stored account (NO API call)" : "🚨 Full derivation (API call)",
+  );
 };
 
 // Make it available globally for console access
