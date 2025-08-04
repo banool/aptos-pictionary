@@ -357,7 +357,7 @@ export function CreateGameModal({
               </DialogTitle>
             </div>
             <DialogDescription className="text-white/90 text-lg font-medium">
-              Set up a magical pictionary adventure with your artist friends! 🌈
+              Begin an artistic adventure with your friends! 🌈
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -452,7 +452,7 @@ export function CreateGameModal({
                 disabled={isLoading}
                 className="palette-button bg-gray-400 hover:bg-gray-500 text-white font-bold px-6 py-3 rounded-full transition-all duration-300"
               >
-                Maybe Later 🤔
+                Maybe Later
               </Button>
               <Button
                 onClick={handleCreateGame}
@@ -468,8 +468,8 @@ export function CreateGameModal({
                   </>
                 ) : (
                   <>
-                    <span>Create Art Studio!</span>
-                    <span className="text-xl">🚀</span>
+                    <span>Enter Art Studio!</span>
+                    <span className="text-xl">🖼️</span>
                   </>
                 )}
               </Button>

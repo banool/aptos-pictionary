@@ -78,7 +78,7 @@ export function GameStatus({
   const getStatusMessage = (): { text: string; emoji: string; color: string } => {
     if (!gameState.started) {
       return { 
-        text: "Art studio is getting ready for magic!", 
+        text: "Preparing art studio!", 
         emoji: "⚡", 
         color: "studio-purple" 
       };
@@ -96,7 +96,7 @@ export function GameStatus({
 
     if (!roundState) {
       return { 
-        text: "Preparing the magical canvas...", 
+        text: "Preparing thecanvas...", 
         emoji: "✨", 
         color: "studio-blue" 
       };
@@ -171,8 +171,8 @@ export function GameStatus({
               className="palette-button bg-studio-green hover:bg-studio-blue text-white font-bold px-6 py-3 flex items-center gap-3 transition-all duration-300 fun-shadow"
             >
               <Play size={18} className="paint-drip" />
-              <span>Start the Magic!</span>
-              <span className="text-lg">🚀</span>
+              <span>Start painting!</span>
+              <span className="text-lg">🎨</span>
             </Button>
           )}
 

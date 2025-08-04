@@ -6,6 +6,8 @@ import { Header } from "@/components/Header";
 import { GameInterface } from "@/components/GameInterface";
 import { CreateGameModal } from "@/components/CreateGameModal";
 import { GoogleCallback } from "@/components/GoogleCallback";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 
 // Home page component
@@ -26,7 +28,7 @@ function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header onCreateGame={activeAccount ? handleCreateGame : undefined} />
+      <Header />
       <div className="flex-1 flex">
         {activeAccount ? (
           <div className="flex items-center justify-center flex-col flex-1 p-8">
@@ -49,6 +51,18 @@ function HomePage() {
                 Ready to unleash your creativity? Create a new canvas or join your friends 
                 in an artistic adventure! Let's paint some masterpieces together! 🌈
               </p>
+              
+              <div className="mb-8">
+                <Button 
+                  onClick={handleCreateGame} 
+                  className="palette-button bg-studio-orange hover:bg-studio-yellow text-white font-bold px-8 py-4 text-lg flex items-center gap-3 border-0 hover:scale-105 transition-all duration-300 fun-shadow mx-auto"
+                >
+                  <Plus size={24} className="paint-drip" />
+                  <span className="font-playful">New Art Adventure!</span>
+                  <span className="text-2xl">🎨</span>
+                </Button>
+              </div>
+              
               <div className="flex justify-center gap-4">
                 <div className="w-8 h-8 bg-studio-green rounded-full paint-blob animate-bounce"></div>
                 <div className="w-6 h-6 bg-studio-purple rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.1s' }}></div>

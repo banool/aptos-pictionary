@@ -51,7 +51,7 @@ export function UserMenu({ className }: UserMenuProps) {
   const truncatedAddress = `${activeAccount.accountAddress.toString().slice(0, 6)}...${activeAccount.accountAddress.toString().slice(-4)}`;
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex items-center gap-2 px-4 ${className}`}>
       {/* Account address display */}
       <span className="text-sm text-gray-600 font-mono">
         {truncatedAddress}

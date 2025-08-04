@@ -206,7 +206,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   };
 
   return (
-    <div className="w-80 bg-gradient-to-b from-purple-50 to-blue-50 flex flex-col h-screen max-h-screen relative overflow-hidden">
+    <div className="w-80 bg-gradient-to-b from-purple-50 to-blue-50 h-screen max-h-screen relative overflow-y-auto scrollbar-hide">
       {/* Studio Background Splotches */}
       <div className="absolute inset-0 pointer-events-none opacity-10">
         <div className="absolute top-10 left-4 w-16 h-16 bg-studio-yellow rounded-full paint-blob"></div>
@@ -234,7 +234,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             <div className="w-8 h-8 bg-studio-orange rounded-full paint-blob mx-auto mb-1 flex items-center justify-center">
               <span className="text-white text-sm font-bold">{gameState.targetScore}</span>
             </div>
-            <span className="text-xs font-bold text-gray-700">Target</span>
+            <span className="text-xs font-bold text-gray-700">Target Score</span>
           </div>
         </div>
       </div>
@@ -262,21 +262,29 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             </div>
           </div>
           <div className="space-y-2">
-            {gameState.team0Players.map((player, index) => (
-              <div key={player.toString()} className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-studio-yellow rounded-full paint-blob flex items-center justify-center">
-                  <span className="text-xs">👤</span>
-                </div>
-                <span className="text-sm font-medium text-gray-700">
-                  {getPlayerDisplayName(player)}
-                </span>
-                {index === gameState.currentTeam0Artist && (
-                  <div className="w-6 h-6 bg-studio-orange rounded-full paint-blob flex items-center justify-center ml-auto animate-bounce">
-                    <span className="text-white text-xs">🎨</span>
+            {gameState.team0Players.map((player, index) => {
+              const isCurrentUser = account && account.accountAddress.toString() === player.toString();
+              return (
+                <div key={player.toString()} className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-studio-yellow rounded-full paint-blob flex items-center justify-center">
+                    <span className="text-xs">👤</span>
                   </div>
-                )}
-              </div>
-            ))}
+                  <span className="text-sm font-medium text-gray-700 flex-1">
+                    {getPlayerDisplayName(player)}
+                    {isCurrentUser && (
+                      <span className="ml-2 text-xs font-bold text-studio-blue bg-blue-50 px-2 py-1 rounded-full">
+                        (you)
+                      </span>
+                    )}
+                  </span>
+                  {index === gameState.currentTeam0Artist && (
+                    <div className="w-6 h-6 bg-studio-orange rounded-full paint-blob flex items-center justify-center animate-bounce">
+                      <span className="text-white text-xs">🎨</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {roundState?.team0Guessed && (
             <div className="mt-3 flex items-center gap-2 p-2 bg-green-100 rounded-lg">
@@ -302,21 +310,29 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             </div>
           </div>
           <div className="space-y-2">
-            {gameState.team1Players.map((player, index) => (
-              <div key={player.toString()} className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-studio-yellow rounded-full paint-blob flex items-center justify-center">
-                  <span className="text-xs">👤</span>
-                </div>
-                <span className="text-sm font-medium text-gray-700">
-                  {getPlayerDisplayName(player)}
-                </span>
-                {index === gameState.currentTeam1Artist && (
-                  <div className="w-6 h-6 bg-studio-orange rounded-full paint-blob flex items-center justify-center ml-auto animate-bounce">
-                    <span className="text-white text-xs">🎨</span>
+            {gameState.team1Players.map((player, index) => {
+              const isCurrentUser = account && account.accountAddress.toString() === player.toString();
+              return (
+                <div key={player.toString()} className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-studio-yellow rounded-full paint-blob flex items-center justify-center">
+                    <span className="text-xs">👤</span>
                   </div>
-                )}
-              </div>
-            ))}
+                  <span className="text-sm font-medium text-gray-700 flex-1">
+                    {getPlayerDisplayName(player)}
+                    {isCurrentUser && (
+                      <span className="ml-2 text-xs font-bold text-studio-pink bg-pink-50 px-2 py-1 rounded-full">
+                        (you)
+                      </span>
+                    )}
+                  </span>
+                  {index === gameState.currentTeam1Artist && (
+                    <div className="w-6 h-6 bg-studio-orange rounded-full paint-blob flex items-center justify-center animate-bounce">
+                      <span className="text-white text-xs">🎨</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {roundState?.team1Guessed && (
             <div className="mt-3 flex items-center gap-2 p-2 bg-green-100 rounded-lg">
@@ -336,9 +352,9 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             <div className="w-8 h-8 bg-studio-yellow rounded-full paint-blob flex items-center justify-center animate-bounce">
               <span className="text-white text-sm">✨</span>
             </div>
-            <h4 className="font-playful text-lg text-studio-yellow">The magic word was...</h4>
+            <h4 className="font-playful text-lg text-gray-800">The secret word was...</h4>
           </div>
-          <div className="text-3xl font-playful text-center py-4 bg-gradient-to-r from-studio-purple to-studio-blue text-white rounded-2xl fun-shadow">
+          <div className="text-3xl font-playful text-center py-4 bg-gradient-to-r from-studio-purple to-studio-blue rounded-2xl fun-shadow">
             {roundState.word} 🎉
           </div>
         </div>
@@ -353,7 +369,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             </div>
             <h4 className="font-playful text-lg text-studio-blue">Your secret word:</h4>
           </div>
-          <div className="text-2xl font-playful text-center py-4 bg-gradient-to-r from-studio-blue to-studio-purple text-white rounded-2xl fun-shadow animate-pulse">
+          <div className="text-2xl font-playful text-center py-4 bg-gradient-to-r from-studio-blue to-studio-purple text-black rounded-2xl fun-shadow animate-pulse">
             {currentWordForArtist} 🖌️
           </div>
           <p className="text-xs text-center text-gray-600 mt-2 font-medium">
@@ -369,7 +385,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             <div className="w-8 h-8 bg-studio-green rounded-full paint-blob flex items-center justify-center">
               <span className="text-white text-sm">🔮</span>
             </div>
-            <h4 className="font-playful text-lg text-studio-green">Guess the Magic Word!</h4>
+            <h4 className="font-playful text-lg text-studio-green">Guess the secret word!</h4>
           </div>
           <div className="flex gap-2">
             <Input
@@ -428,39 +444,48 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
       {/* Remove duplicate next round button - it's already in GameStatus */}
 
       {/* Round History */}
-      <div className="flex-1 p-4 min-h-0">
-        <h4 className="font-semibold mb-3">Round History</h4>
-        <div className="h-full max-h-96 overflow-y-auto">
-          <div className="space-y-3">
-            {roundResults.length === 0 ? (
-              <p className="text-sm text-gray-500">No rounds completed yet</p>
-            ) : (
-              roundResults.slice().reverse().map((result) => (
-                <div key={result.roundNumber} className="bg-white p-3 rounded border">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium">Round {result.roundNumber}</span>
-                    <span className="text-sm text-gray-500">"{result.word}"</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>{gameState.team0Name}: +{result.team0Points} ({result.team0TotalScore})</span>
-                    <span>{gameState.team1Name}: +{result.team1Points} ({result.team1TotalScore})</span>
-                  </div>
-                </div>
-              ))
-            )}
+      <div className="artist-card m-3 p-4 relative z-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 bg-studio-purple rounded-full paint-blob flex items-center justify-center">
+            <span className="text-white text-sm">📜</span>
           </div>
+          <h4 className="font-playful text-lg text-studio-purple">Art History</h4>
+        </div>
+        <div className="space-y-3">
+          {roundResults.length === 0 ? (
+            <p className="text-sm text-gray-600 text-center italic">No masterpieces completed yet... 🎨</p>
+          ) : (
+            roundResults.slice().reverse().map((result) => (
+              <div key={result.roundNumber} className="bg-white p-3 rounded-xl border-2 border-gray-200 paint-splatter">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-bold text-gray-800">🎭 Round {result.roundNumber}</span>
+                  <span className="text-sm font-medium text-studio-blue bg-blue-50 px-2 py-1 rounded-full">"{result.word}"</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-studio-blue font-medium">{gameState.team0Name}: +{result.team0Points} ({result.team0TotalScore})</span>
+                  <span className="text-studio-pink font-medium">{gameState.team1Name}: +{result.team1Points} ({result.team1TotalScore})</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
-      {/* Game Over */}
+      {/* Game Over Celebration */}
       {gameState.finished && gameState.winner !== null && (
-        <div className="p-4 bg-green-50 border-t">
+        <div className="artist-card m-3 p-4 relative z-10 bounce-in paint-splatter">
           <div className="text-center">
-            <h3 className="text-lg font-bold text-green-800 mb-2">
-              🎉 {gameState.winner === 0 ? gameState.team0Name : gameState.team1Name} Wins!
+            <div className="w-16 h-16 bg-studio-yellow rounded-full paint-blob flex items-center justify-center mx-auto mb-4 animate-bounce">
+              <span className="text-3xl">🏆</span>
+            </div>
+            <h3 className="font-playful text-2xl text-studio-green mb-2">
+              🎉 Art Champions! 🎉
             </h3>
-            <p className="text-sm text-green-600">
-              Final Score: {currentScores.team0Score} - {currentScores.team1Score}
+            <p className="font-bold text-lg text-gray-800 mb-2">
+              {gameState.winner === 0 ? gameState.team0Name : gameState.team1Name} are the winners!
+            </p>
+            <p className="text-sm text-gray-600">
+              Final Masterpiece Score: {currentScores.team0Score} - {currentScores.team1Score} 🎨
             </p>
           </div>
         </div>

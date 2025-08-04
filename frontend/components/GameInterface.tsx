@@ -239,7 +239,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
           <h2 className="font-playful text-2xl text-studio-blue mb-2">
             Setting up the Studio... ✨
           </h2>
-          <p className="text-gray-700">Preparing your magical art canvas!</p>
+          <p className="text-gray-700">Preparing your canvas!</p>
         </div>
       </div>
     );

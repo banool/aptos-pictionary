@@ -394,7 +394,7 @@ export function GameCanvas({
             <Button
               variant="outline"
               onClick={() => setShowColorPalette(!showColorPalette)}
-              className="palette-button bg-white hover:bg-gray-50 text-gray-800 font-semibold px-6 py-3 flex items-center gap-3 border-2 border-gray-300 shadow-lg"
+              className="bg-white hover:bg-gray-50 text-gray-800 hover:text-gray-900 font-semibold px-6 py-3 flex items-center gap-3 border-2 border-gray-300 shadow-lg rounded-2xl transition-all duration-300"
             >
               <div
                 className="w-6 h-6 rounded-full border-2 border-white shadow-lg paint-blob"
@@ -405,7 +405,7 @@ export function GameCanvas({
             </Button>
             
             {showColorPalette && (
-              <div className="absolute top-full mt-3 artist-card p-4 fun-shadow z-20 bounce-in">
+              <div className="absolute bottom-full mb-3 artist-card p-4 fun-shadow z-20 bounce-in">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
                     <Palette size={16} className="text-white" />
@@ -435,7 +435,7 @@ export function GameCanvas({
                 </div>
                 <div className="mt-3 text-center">
                   <p className="text-sm text-gray-600 font-medium">
-                    Choose your magical paint! 🌈
+                    Choose your paint! 🌈
                   </p>
                 </div>
               </div>
@@ -472,8 +472,8 @@ export function GameCanvas({
                 <div className="w-6 h-6 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
                   <Clock size={14} className="text-white" />
                 </div>
-                <span className="font-bold text-studio-blue">
-                  Magic save in {countdown}s ✨ ({pendingChangesCount} brushstrokes)
+                <span className="text-studio-blue">
+                  Save in {countdown}s ✨ ({pendingChangesCount} brushstrokes)
                 </span>
               </div>
             )}

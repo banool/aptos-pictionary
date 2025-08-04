@@ -15,19 +15,16 @@ export function Header({ onCreateGame }: HeaderProps) {
           className="flex items-center gap-3 cursor-pointer group paint-splatter" 
           onClick={() => window.location.href = '/'}
         >
-          <div className="flex items-center justify-center w-12 h-12 bg-white rounded-full paint-blob shadow-lg group-hover:wobble">
+          <div className="flex items-center justify-center w-12 h-12 bg-white rounded-full paint-blob shadow-lg">
             <Palette className="text-studio-blue w-6 h-6" />
           </div>
           <h1 className="font-playful text-white text-3xl drop-shadow-lg group-hover:text-studio-yellow transition-colors duration-300">
             🎨 Aptos Pictionary
           </h1>
-          <div className="hidden sm:flex items-center justify-center w-8 h-8 bg-studio-yellow rounded-full paint-blob ml-2 animate-bounce">
-            <Paintbrush2 className="text-white w-4 h-4" />
-          </div>
         </div>
 
         <div className="flex gap-3 items-center flex-wrap">
-          <div className="artist-card px-3 py-1">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-1 shadow-lg">
             <AptBalanceDisplay />
           </div>
           {onCreateGame && (
@@ -39,7 +36,7 @@ export function Header({ onCreateGame }: HeaderProps) {
               <span className="font-bold">New Game</span>
             </Button>
           )}
-          <div className="artist-card">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
             <LoginButton />
           </div>
         </div>
