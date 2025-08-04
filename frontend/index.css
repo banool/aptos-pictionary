@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Nunito:wght@300;400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Nunito:wght@300;400;600;700;800&family=Bubblegum+Sans&family=Baloo+2:wght@400;500;600;700;800&family=Kalam:wght@300;400;700&display=swap');
 
 @layer base {
   :root {
@@ -88,18 +88,26 @@
   html, body {
     @apply bg-background text-foreground;
     height: 100%;
-    font-family: 'Nunito', sans-serif;
+    font-family: 'Baloo 2', 'Nunito', sans-serif;
   }
   #root {
     height: 100%;
     display: flex;
     flex-direction: column;
     background: 
+      /* Polka dots pattern */
+      radial-gradient(circle at 12px 12px, hsl(var(--studio-blue)) 2px, transparent 2px),
+      radial-gradient(circle at 60px 60px, hsl(var(--studio-pink)) 1px, transparent 1px),
+      radial-gradient(circle at 35px 85px, hsl(var(--studio-yellow)) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 90px 30px, hsl(var(--studio-green)) 1px, transparent 1px),
+      /* Large paint splotches */
       radial-gradient(circle at 15% 20%, hsl(var(--studio-yellow)) 0%, transparent 50%),
       radial-gradient(circle at 85% 10%, hsl(var(--studio-pink)) 0%, transparent 40%),
       radial-gradient(circle at 70% 80%, hsl(var(--studio-green)) 0%, transparent 45%),
       radial-gradient(circle at 30% 70%, hsl(var(--studio-purple)) 0%, transparent 35%),
+      radial-gradient(circle at 50% 50%, hsl(var(--studio-orange)) 0%, transparent 60%),
       hsl(var(--canvas-cream));
+    background-size: 120px 120px, 120px 120px, 120px 120px, 120px 120px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
     background-attachment: fixed;
   }
 }
@@ -279,11 +287,116 @@
     border-radius: 0 0 50% 50%;
     opacity: 0.6;
   }
+
+  .polka-dots {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .polka-dots::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20px 20px, hsl(var(--studio-blue)) 3px, transparent 3px),
+      radial-gradient(circle at 60px 60px, hsl(var(--studio-pink)) 2px, transparent 2px),
+      radial-gradient(circle at 40px 80px, hsl(var(--studio-yellow)) 2.5px, transparent 2.5px),
+      radial-gradient(circle at 80px 40px, hsl(var(--studio-green)) 2px, transparent 2px);
+    background-size: 100px 100px, 100px 100px, 100px 100px, 100px 100px;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  .paint-splatters {
+    position: relative;
+  }
+
+  .paint-splatters::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 15%;
+    width: 25px;
+    height: 25px;
+    background: hsl(var(--studio-orange));
+    border-radius: 60% 40% 30% 70%;
+    opacity: 0.2;
+    transform: rotate(45deg);
+    animation: float 8s ease-in-out infinite;
+  }
+
+  .paint-splatters::after {
+    content: '';
+    position: absolute;
+    bottom: 20%;
+    right: 10%;
+    width: 20px;
+    height: 20px;
+    background: hsl(var(--studio-purple));
+    border-radius: 40% 60% 70% 30%;
+    opacity: 0.2;
+    transform: rotate(-30deg);
+    animation: float 6s ease-in-out infinite reverse;
+  }
+
+  .zigzag-border {
+    position: relative;
+  }
+
+  .zigzag-border::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: linear-gradient(45deg, transparent 3px, hsl(var(--studio-blue)) 3px, hsl(var(--studio-blue)) 7px, transparent 7px),
+                linear-gradient(-45deg, transparent 3px, hsl(var(--studio-yellow)) 3px, hsl(var(--studio-yellow)) 7px, transparent 7px);
+    background-size: 20px 10px, 20px 10px;
+    background-position: 0 0, 10px 0;
+    opacity: 0.3;
+  }
+
+  .crayon-scribble {
+    position: relative;
+  }
+
+  .crayon-scribble::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80%;
+    height: 2px;
+    background: hsl(var(--studio-green));
+    transform: translate(-50%, -50%) rotate(-5deg);
+    border-radius: 2px;
+    opacity: 0.4;
+    box-shadow: 
+      0 8px 0 hsl(var(--studio-red)),
+      0 16px 0 hsl(var(--studio-blue)),
+      0 24px 0 hsl(var(--studio-yellow));
+  }
 }
 
 @layer utilities {
   .font-playful {
     font-family: 'Fredoka One', cursive;
+  }
+  
+  .font-bubbly {
+    font-family: 'Bubblegum Sans', cursive;
+  }
+  
+  .font-bouncy {
+    font-family: 'Baloo 2', cursive;
+  }
+  
+  .font-sketchy {
+    font-family: 'Kalam', cursive;
   }
   
   .text-studio-blue {

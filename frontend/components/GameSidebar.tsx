@@ -221,7 +221,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
           <div className="w-10 h-10 bg-studio-purple rounded-full paint-blob flex items-center justify-center">
             <span className="text-white text-lg">🎮</span>
           </div>
-          <h3 className="font-playful text-xl text-studio-purple">Studio Dashboard</h3>
+          <h3 className="font-bubbly text-xl text-studio-purple crayon-scribble">Studio Dashboard</h3>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="text-center">
@@ -245,7 +245,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
           <div className="w-8 h-8 bg-studio-green rounded-full paint-blob flex items-center justify-center">
             <span className="text-white text-sm">👥</span>
           </div>
-          <h4 className="font-playful text-lg text-studio-green">Art Teams 🎨</h4>
+          <h4 className="font-bubbly text-lg text-studio-green polka-dots">Art Teams 🎨</h4>
         </div>
         
         {/* Team 1 */}
@@ -255,7 +255,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
               <div className="w-6 h-6 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
                 <span className="text-white text-xs font-bold">1</span>
               </div>
-              <span className="font-playful text-studio-blue">{gameState.team0Name}</span>
+              <span className="font-bouncy text-studio-blue">{gameState.team0Name}</span>
             </div>
             <div className="w-10 h-10 bg-studio-blue rounded-full paint-blob flex items-center justify-center fun-shadow">
               <span className="text-white font-bold">{currentScores.team0Score}</span>
@@ -303,7 +303,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
               <div className="w-6 h-6 bg-studio-pink rounded-full paint-blob flex items-center justify-center">
                 <span className="text-white text-xs font-bold">2</span>
               </div>
-              <span className="font-playful text-studio-pink">{gameState.team1Name}</span>
+              <span className="font-bouncy text-studio-pink">{gameState.team1Name}</span>
             </div>
             <div className="w-10 h-10 bg-studio-pink rounded-full paint-blob flex items-center justify-center fun-shadow">
               <span className="text-white font-bold">{currentScores.team1Score}</span>
@@ -352,9 +352,9 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             <div className="w-8 h-8 bg-studio-yellow rounded-full paint-blob flex items-center justify-center animate-bounce">
               <span className="text-white text-sm">✨</span>
             </div>
-            <h4 className="font-playful text-lg text-gray-800">The secret word was...</h4>
+            <h4 className="font-bubbly text-lg text-gray-800 paint-splatters">The secret word was...</h4>
           </div>
-          <div className="text-3xl font-playful text-center py-4 bg-gradient-to-r from-studio-purple to-studio-blue rounded-2xl fun-shadow">
+          <div className="text-4xl font-bubbly text-center py-4 bg-gradient-to-r from-studio-purple to-studio-blue text-white rounded-2xl fun-shadow polka-dots">
             {roundState.word} 🎉
           </div>
         </div>
@@ -379,7 +379,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
       )}
 
       {/* Magic Guessing Interface */}
-      {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && !hasUserTeamGuessed() && (
+      {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && !hasUserTeamGuessed() && !roundState?.finished && (
         <div className="artist-card m-3 p-4 relative z-10 paint-splatter">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 bg-studio-green rounded-full paint-blob flex items-center justify-center">

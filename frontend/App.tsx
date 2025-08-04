@@ -32,9 +32,9 @@ function HomePage() {
       <div className="flex-1 flex">
         {activeAccount ? (
           <div className="flex items-center justify-center flex-col flex-1 p-8">
-            <div className="artist-card text-center p-8 max-w-2xl bounce-in paint-splatter">
+            <div className="artist-card text-center p-8 max-w-2xl bounce-in paint-splatter polka-dots zigzag-border">
               <div className="flex items-center justify-center mb-6">
-                <div className="w-20 h-20 bg-studio-blue rounded-full paint-blob flex items-center justify-center mr-4 fun-shadow">
+                <div className="w-20 h-20 bg-studio-blue rounded-full paint-blob flex items-center justify-center mr-4 fun-shadow paint-splatters">
                   <span className="text-4xl">🎨</span>
                 </div>
                 <div className="w-16 h-16 bg-studio-yellow rounded-full paint-blob flex items-center justify-center mr-3 fun-shadow">
@@ -44,10 +44,10 @@ function HomePage() {
                   <span className="text-2xl">🖌️</span>
                 </div>
               </div>
-              <h1 className="font-playful text-4xl text-studio-blue mb-4 drop-shadow-sm">
+              <h1 className="font-bubbly text-5xl text-studio-blue mb-4 drop-shadow-sm crayon-scribble">
                 Welcome to the Art Studio! 🎭
               </h1>
-              <p className="text-lg text-gray-700 mb-8 leading-relaxed">
+              <p className="font-bouncy text-xl text-gray-700 mb-8 leading-relaxed">
                 Ready to unleash your creativity? Create a new canvas or join your friends 
                 in an artistic adventure! Let's paint some masterpieces together! 🌈
               </p>
@@ -55,18 +55,19 @@ function HomePage() {
               <div className="mb-8">
                 <Button 
                   onClick={handleCreateGame} 
-                  className="palette-button bg-studio-orange hover:bg-studio-yellow text-white font-bold px-8 py-4 text-lg flex items-center gap-3 border-0 hover:scale-105 transition-all duration-300 fun-shadow mx-auto"
+                  className="palette-button bg-studio-orange hover:bg-studio-yellow text-white font-bold px-10 py-5 text-xl flex items-center gap-4 border-0 hover:scale-105 transition-all duration-300 fun-shadow mx-auto paint-splatters"
                 >
-                  <Plus size={24} className="paint-drip" />
-                  <span className="font-playful">New Art Adventure!</span>
-                  <span className="text-2xl">🎨</span>
+                  <Plus size={28} className="paint-drip" />
+                  <span className="font-bubbly">New Art Adventure!</span>
+                  <span className="text-3xl">🎨</span>
                 </Button>
               </div>
               
               <div className="flex justify-center gap-4">
-                <div className="w-8 h-8 bg-studio-green rounded-full paint-blob animate-bounce"></div>
-                <div className="w-6 h-6 bg-studio-purple rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-10 h-10 bg-studio-orange rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-10 h-10 bg-studio-green rounded-full paint-blob animate-bounce paint-splatters"></div>
+                <div className="w-8 h-8 bg-studio-purple rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-12 h-12 bg-studio-orange rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-6 h-6 bg-studio-pink rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.3s' }}></div>
               </div>
             </div>
           </div>

@@ -352,7 +352,7 @@ export function CreateGameModal({
               <div className="w-12 h-12 bg-white rounded-full paint-blob flex items-center justify-center fun-shadow">
                 <span className="text-2xl">🎨</span>
               </div>
-              <DialogTitle className="font-playful text-3xl text-white drop-shadow-lg">
+              <DialogTitle className="font-bubbly text-4xl text-white drop-shadow-lg paint-splatters">
                 Enter Art Studio! ✨
               </DialogTitle>
             </div>
@@ -371,7 +371,7 @@ export function CreateGameModal({
                 <div className="w-10 h-10 bg-studio-purple rounded-full paint-blob flex items-center justify-center">
                   <span className="text-white text-lg">👥</span>
                 </div>
-                <h3 className="font-playful text-2xl text-studio-purple">Assemble Your Art Teams!</h3>
+                <h3 className="font-bubbly text-2xl text-studio-purple crayon-scribble">Assemble Your Art Teams!</h3>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {renderTeamInputs(0, team0Players, "Team 1")}
@@ -385,7 +385,7 @@ export function CreateGameModal({
                 <div className="w-10 h-10 bg-studio-green rounded-full paint-blob flex items-center justify-center">
                   <span className="text-white text-lg">⚙️</span>
                 </div>
-                <h3 className="font-playful text-2xl text-studio-green">Art Studio Settings</h3>
+                <h3 className="font-bubbly text-2xl text-studio-green polka-dots">Art Studio Settings</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

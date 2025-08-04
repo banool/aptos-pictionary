@@ -18,7 +18,7 @@ export function Header({ onCreateGame }: HeaderProps) {
           <div className="flex items-center justify-center w-12 h-12 bg-white rounded-full paint-blob shadow-lg">
             <Palette className="text-studio-blue w-6 h-6" />
           </div>
-          <h1 className="font-playful text-white text-3xl drop-shadow-lg group-hover:text-studio-yellow transition-colors duration-300">
+          <h1 className="font-bubbly text-white text-3xl drop-shadow-lg group-hover:text-studio-yellow transition-colors duration-300 paint-splatters">
             🎨 Aptos Pictionary
           </h1>
         </div>

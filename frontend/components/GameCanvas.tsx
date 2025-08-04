@@ -366,7 +366,7 @@ export function GameCanvas({
         {!canDraw && userTeam !== null && gameStarted && !roundFinished && (
           <div className="absolute top-4 left-4 artist-card px-4 py-2 paint-splatter">
             <p className="text-sm font-bold text-studio-blue flex items-center gap-2">
-              👁️ <span>Watching your team artist create magic!</span> ✨
+              <span>Watching your team's artist create magic!</span> ✨
             </p>
           </div>
         )}

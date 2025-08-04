@@ -96,7 +96,7 @@ export function GameStatus({
 
     if (!roundState) {
       return { 
-        text: "Preparing thecanvas...", 
+        text: "Preparing the canvas...", 
         emoji: "✨", 
         color: "studio-blue" 
       };
@@ -120,7 +120,7 @@ export function GameStatus({
 
     if (isCurrentArtist) {
       return { 
-        text: "You're the magical artist! Draw away!", 
+        text: "You're the artist! Draw away!", 
         emoji: "🖌️", 
         color: "studio-orange" 
       };
@@ -193,7 +193,7 @@ export function GameStatus({
               <div className={`w-8 h-8 rounded-full paint-blob flex items-center justify-center ${
                 timeLeft <= 10 ? "bg-studio-red animate-pulse" : "bg-studio-blue"
               }`}>
-                <Clock size={16} className="text-white" />
+                <Clock size={16} className="text-black" />
               </div>
               <div className="text-center">
                 <div className={`text-2xl font-playful font-bold ${
