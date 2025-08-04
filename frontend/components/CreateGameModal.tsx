@@ -270,122 +270,210 @@ export function CreateGameModal({
     team: 0 | 1,
     players: PlayerInput[],
     teamName: string
-  ) => (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Label className="text-base font-semibold">{teamName}</Label>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => addPlayer(team)}
-          className="h-8 w-8 p-0"
-        >
-          <Plus size={16} />
-        </Button>
-      </div>
-      {players.map((player, index) => {
-        const isPrefilledUser = team === 0 && index === 0 && player.address === userDisplayName && userDisplayName !== "";
-        return (
-          <div key={player.id} className="flex gap-2 items-center">
-            <Input
-              placeholder={
-                team === 0 && index === 0 
-                  ? `Your address${userDisplayName ? " (auto-filled)" : ""}` 
-                  : `Player ${index + 1} address or ANS name`
-              }
-              value={player.address}
-              onChange={(e) =>
-                updatePlayerAddress(team, player.id, e.target.value)
-              }
-              className={`flex-1 ${isPrefilledUser ? "bg-blue-50 border-blue-200" : ""}`}
-            />
-            {isPrefilledUser && (
-              <span className="text-xs text-blue-600 font-medium px-2">You</span>
-            )}
-            {players.length > 2 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => removePlayer(team, player.id)}
-                className="h-8 w-8 p-0"
-              >
-                <Minus size={16} />
-              </Button>
-            )}
+  ) => {
+    const teamColor = team === 0 ? "studio-blue" : "studio-pink";
+    const teamEmoji = team === 0 ? "🔵" : "🩷";
+    
+    return (
+      <div className="artist-card p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 bg-${teamColor} rounded-full paint-blob flex items-center justify-center`}>
+              <span className="text-white font-bold">{team + 1}</span>
+            </div>
+            <Label className={`font-playful text-lg text-${teamColor}`}>
+              {teamEmoji} {teamName} Artists
+            </Label>
           </div>
-        );
-      })}
-    </div>
-  );
+          <Button
+            type="button"
+            onClick={() => addPlayer(team)}
+            className={`palette-button bg-${teamColor} hover:bg-studio-green text-white font-bold px-3 py-2 rounded-full transition-all duration-300`}
+          >
+            <Plus size={16} className="paint-drip" />
+          </Button>
+        </div>
+        
+        <div className="space-y-3">
+          {players.map((player, index) => {
+            const isPrefilledUser = team === 0 && index === 0 && player.address === userDisplayName && userDisplayName !== "";
+            return (
+              <div key={player.id} className="flex gap-3 items-center">
+                <div className="w-6 h-6 bg-studio-yellow rounded-full paint-blob flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold">{index + 1}</span>
+                </div>
+                <Input
+                  placeholder={
+                    team === 0 && index === 0 
+                      ? `🎨 Your address${userDisplayName ? " (auto-filled)" : ""}` 
+                      : `👤 Artist ${index + 1} address or ANS name`
+                  }
+                  value={player.address}
+                  onChange={(e) =>
+                    updatePlayerAddress(team, player.id, e.target.value)
+                  }
+                  className={`flex-1 rounded-full border-2 border-gray-300 px-4 py-2 font-medium focus:border-${teamColor} focus:ring-2 focus:ring-${teamColor} focus:ring-opacity-20 ${
+                    isPrefilledUser ? `bg-${teamColor}/10 border-${teamColor}/30` : ""
+                  }`}
+                />
+                {isPrefilledUser && (
+                  <div className={`px-3 py-1 bg-${teamColor} text-white text-xs font-bold rounded-full paint-blob flex items-center gap-1`}>
+                    <span>👑</span>
+                    <span>You!</span>
+                  </div>
+                )}
+                {players.length > 2 && (
+                  <Button
+                    type="button"
+                    onClick={() => removePlayer(team, player.id)}
+                    className="palette-button bg-studio-red hover:bg-studio-orange text-white font-bold w-8 h-8 p-0 rounded-full transition-all duration-300"
+                  >
+                    <Minus size={14} />
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={() => !isLoading && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create New Game</DialogTitle>
-          <DialogDescription>
-            Set up a new Pictionary game with your friends
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderTeamInputs(0, team0Players, "Team 1")}
-            {renderTeamInputs(1, team1Players, "Team 2")}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="targetScore">Target Score</Label>
-              <Input
-                id="targetScore"
-                type="number"
-                min="1"
-                max="50"
-                value={targetScore}
-                onChange={(e) => setTargetScore(e.target.value)}
-              />
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto artist-card paint-splatter border-0 p-0">
+        <div className="studio-header rounded-t-2xl p-6 relative overflow-hidden">
+          {/* Decorative paint splotches */}
+          <div className="absolute top-2 right-8 w-6 h-6 bg-studio-yellow rounded-full paint-blob opacity-30"></div>
+          <div className="absolute bottom-3 left-12 w-4 h-4 bg-studio-pink rounded-full paint-blob opacity-40"></div>
+          
+          <DialogHeader className="relative z-10">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-12 h-12 bg-white rounded-full paint-blob flex items-center justify-center fun-shadow">
+                <span className="text-2xl">🎨</span>
+              </div>
+              <DialogTitle className="font-playful text-3xl text-white drop-shadow-lg">
+                Enter Art Studio! ✨
+              </DialogTitle>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="canvasSize">Canvas Size</Label>
-              <Input
-                id="canvasSize"
-                type="number"
-                min="200"
-                max="1000"
-                value={canvasSize}
-                onChange={(e) => setCanvasSize(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="roundDuration">Round Duration (seconds)</Label>
-              <Input
-                id="roundDuration"
-                type="number"
-                min="10"
-                max="300"
-                value={roundDuration}
-                onChange={(e) => setRoundDuration(e.target.value)}
-              />
-            </div>
-          </div>
+            <DialogDescription className="text-white/90 text-lg font-medium">
+              Set up a magical pictionary adventure with your artist friends! 🌈
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+        
+        <div className="p-6">{/* Content will be added here */}
 
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateGame}
-              disabled={isLoading}
-            >
-              {isLoading ? "Creating..." : "Create Game"}
-            </Button>
+          <div className="space-y-8">
+            {/* Team Setup */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-studio-purple rounded-full paint-blob flex items-center justify-center">
+                  <span className="text-white text-lg">👥</span>
+                </div>
+                <h3 className="font-playful text-2xl text-studio-purple">Assemble Your Art Teams!</h3>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {renderTeamInputs(0, team0Players, "Team 1")}
+                {renderTeamInputs(1, team1Players, "Team 2")}
+              </div>
+            </div>
+
+            {/* Game Settings */}
+            <div className="artist-card p-4 space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-studio-green rounded-full paint-blob flex items-center justify-center">
+                  <span className="text-white text-lg">⚙️</span>
+                </div>
+                <h3 className="font-playful text-2xl text-studio-green">Art Studio Settings</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-3">
+                  <Label htmlFor="targetScore" className="flex items-center gap-2 font-bold text-gray-700">
+                    <span className="w-5 h-5 bg-studio-yellow rounded-full paint-blob flex items-center justify-center">
+                      <span className="text-xs">🏆</span>
+                    </span>
+                    Target Score
+                  </Label>
+                  <Input
+                    id="targetScore"
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={targetScore}
+                    onChange={(e) => setTargetScore(e.target.value)}
+                    className="rounded-full border-2 border-gray-300 px-4 py-2 font-medium focus:border-studio-yellow focus:ring-2 focus:ring-studio-yellow focus:ring-opacity-20"
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="canvasSize" className="flex items-center gap-2 font-bold text-gray-700">
+                    <span className="w-5 h-5 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
+                      <span className="text-xs">📐</span>
+                    </span>
+                    Canvas Size (pixels)
+                  </Label>
+                  <Input
+                    id="canvasSize"
+                    type="number"
+                    min="200"
+                    max="1000"
+                    value={canvasSize}
+                    onChange={(e) => setCanvasSize(e.target.value)}
+                    className="rounded-full border-2 border-gray-300 px-4 py-2 font-medium focus:border-studio-blue focus:ring-2 focus:ring-studio-blue focus:ring-opacity-20"
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="roundDuration" className="flex items-center gap-2 font-bold text-gray-700">
+                    <span className="w-5 h-5 bg-studio-orange rounded-full paint-blob flex items-center justify-center">
+                      <span className="text-xs">⏱️</span>
+                    </span>
+                    Round Time (seconds)
+                  </Label>
+                  <Input
+                    id="roundDuration"
+                    type="number"
+                    min="10"
+                    max="300"
+                    value={roundDuration}
+                    onChange={(e) => setRoundDuration(e.target.value)}
+                    className="rounded-full border-2 border-gray-300 px-4 py-2 font-medium focus:border-studio-orange focus:ring-2 focus:ring-studio-orange focus:ring-opacity-20"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-end pt-4 border-t border-gray-200">
+              <Button
+                onClick={onClose}
+                disabled={isLoading}
+                className="palette-button bg-gray-400 hover:bg-gray-500 text-white font-bold px-6 py-3 rounded-full transition-all duration-300"
+              >
+                Maybe Later 🤔
+              </Button>
+              <Button
+                onClick={handleCreateGame}
+                disabled={isLoading}
+                className="palette-button bg-studio-green hover:bg-studio-blue text-white font-bold px-8 py-3 rounded-full transition-all duration-300 fun-shadow flex items-center gap-3"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-5 h-5 bg-white rounded-full paint-blob animate-spin flex items-center justify-center">
+                      <span className="text-studio-green text-xs">✨</span>
+                    </div>
+                    <span>Creating Magic...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Create Art Studio!</span>
+                    <span className="text-xl">🚀</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

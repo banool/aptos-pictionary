@@ -350,9 +350,9 @@ export function GameCanvas({
   const pendingChangesCount = Math.max(0, pendingDeltas.length - lastSubmittedIndexRef.current);
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      {/* Canvas */}
-      <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
+    <div className="flex flex-col items-center space-y-6">
+      {/* Easel Canvas */}
+      <div className="easel-frame relative overflow-hidden bg-white paint-splatter">
         <canvas
           ref={canvasRef}
           className={`block ${canDraw ? "cursor-crosshair" : "cursor-default"}`}
@@ -364,61 +364,80 @@ export function GameCanvas({
         />
         
         {!canDraw && userTeam !== null && gameStarted && !roundFinished && (
-          <div className="absolute top-2 left-2 bg-blue-100 border border-blue-300 px-3 py-1 rounded-md shadow-sm">
-            <p className="text-xs font-medium text-blue-800">
-              👀 Watching your team's artist draw
+          <div className="absolute top-4 left-4 artist-card px-4 py-2 paint-splatter">
+            <p className="text-sm font-bold text-studio-blue flex items-center gap-2">
+              👁️ <span>Watching your team artist create magic!</span> ✨
             </p>
           </div>
         )}
         
         {!canDraw && userTeam === null && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white px-4 py-2 rounded-md shadow-md">
-              <p className="text-sm font-medium">
-                You're not playing in this game
+          <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+            <div className="artist-card px-6 py-4 text-center bounce-in">
+              <div className="w-12 h-12 bg-studio-purple rounded-full paint-blob flex items-center justify-center mx-auto mb-3">
+                <span className="text-2xl">👻</span>
+              </div>
+              <p className="font-bold text-studio-purple">
+                You're a spectator in this art show! 🎭
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Drawing Tools */}
+      {/* Artist Tools */}
       {canDraw && (
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-6">
 
-          {/* Color Palette */}
+          {/* Magic Color Palette */}
           <div className="relative">
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setShowColorPalette(!showColorPalette)}
-              className="flex items-center gap-2"
+              className="palette-button bg-white hover:bg-gray-50 text-gray-800 font-semibold px-6 py-3 flex items-center gap-3 border-2 border-gray-300 shadow-lg"
             >
               <div
-                className="w-4 h-4 rounded border"
+                className="w-6 h-6 rounded-full border-2 border-white shadow-lg paint-blob"
                 style={{ backgroundColor: COLORS[selectedColor].hex }}
               />
-              <Palette size={16} />
+              <Palette size={20} className="text-studio-purple" />
+              <span className="font-bold">Colors ✨</span>
             </Button>
             
             {showColorPalette && (
-              <div className="absolute top-full mt-2 bg-white border rounded-lg shadow-lg p-3 grid grid-cols-7 gap-2 z-10">
-                {COLORS.map((color) => (
-                  <button
-                    key={color.value}
-                    className={`w-8 h-8 rounded border-2 ${
-                      selectedColor === color.value
-                        ? "border-blue-500"
-                        : "border-gray-200"
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                    onClick={() => {
-                      setSelectedColor(color.value);
-                      setShowColorPalette(false);
-                    }}
-                    title={color.name}
-                  />
-                ))}
+              <div className="absolute top-full mt-3 artist-card p-4 fun-shadow z-20 bounce-in">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
+                    <Palette size={16} className="text-white" />
+                  </div>
+                  <h3 className="font-playful text-lg text-studio-blue">Artist's Palette 🎨</h3>
+                </div>
+                <div className="grid grid-cols-6 gap-3">
+                  {COLORS.map((color, index) => (
+                    <button
+                      key={color.value}
+                      className={`w-12 h-12 paint-blob transition-all duration-200 hover:scale-110 shadow-lg ${
+                        selectedColor === color.value
+                          ? "ring-4 ring-studio-blue ring-opacity-50 scale-110"
+                          : "hover:shadow-xl"
+                      }`}
+                      style={{ 
+                        backgroundColor: color.hex,
+                        '--blob-rotation': `${index * 30}deg`
+                      } as React.CSSProperties}
+                      onClick={() => {
+                        setSelectedColor(color.value);
+                        setShowColorPalette(false);
+                      }}
+                      title={`${color.name} Paint 🎨`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 text-center">
+                  <p className="text-sm text-gray-600 font-medium">
+                    Choose your magical paint! 🌈
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -439,21 +458,24 @@ export function GameCanvas({
             </div>
           )}
 
-          {/* Auto-save Status */}
-
-          <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
+          {/* Magic Auto-save Status */}
+          <div className="artist-card px-4 py-2 paint-splatter">
             {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-blue-700">Saving...</span>
-              </>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-studio-green rounded-full paint-blob flex items-center justify-center animate-spin">
+                  <span className="text-white text-xs">✨</span>
+                </div>
+                <span className="font-bold text-studio-green">Saving masterpiece... 🎨</span>
+              </div>
             ) : (
-              <>
-                <Clock size={16} className="text-blue-600" />
-                <span className="text-blue-700">
-                  Auto-save in {countdown}s ({pendingChangesCount} changes)
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
+                  <Clock size={14} className="text-white" />
+                </div>
+                <span className="font-bold text-studio-blue">
+                  Magic save in {countdown}s ✨ ({pendingChangesCount} brushstrokes)
                 </span>
-              </>
+              </div>
             )}
           </div>
 

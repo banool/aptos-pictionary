@@ -229,10 +229,17 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading game...</p>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="artist-card text-center p-8 bounce-in">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-studio-blue rounded-full paint-blob flex items-center justify-center animate-spin fun-shadow">
+              <span className="text-3xl">🎨</span>
+            </div>
+          </div>
+          <h2 className="font-playful text-2xl text-studio-blue mb-2">
+            Setting up the Studio... ✨
+          </h2>
+          <p className="text-gray-700">Preparing your magical art canvas!</p>
         </div>
       </div>
     );
@@ -240,10 +247,17 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center text-red-600">
-          <p className="text-lg font-semibold mb-2">Error</p>
-          <p>{error}</p>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="artist-card text-center p-8 bounce-in paint-splatter">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-studio-red rounded-full paint-blob flex items-center justify-center fun-shadow wobble">
+              <span className="text-3xl">😵</span>
+            </div>
+          </div>
+          <h2 className="font-playful text-2xl text-studio-red mb-4">
+            Oops! Studio Trouble 🎭
+          </h2>
+          <p className="text-gray-700 leading-relaxed">{error}</p>
         </div>
       </div>
     );
@@ -251,17 +265,33 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
 
   if (!gameState) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p>Game not found</p>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="artist-card text-center p-8 bounce-in">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-studio-purple rounded-full paint-blob flex items-center justify-center fun-shadow">
+              <span className="text-3xl">🔍</span>
+            </div>
+          </div>
+          <h2 className="font-playful text-2xl text-studio-purple mb-2">
+            Canvas Missing! 🖼️
+          </h2>
+          <p className="text-gray-700">This artwork seems to have vanished into thin air!</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex h-full">
-      {/* Left Sidebar - Game Info (moved from right) */}
+    <div className="flex-1 flex h-full relative overflow-hidden">
+      {/* Studio Background Elements */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <div className="absolute top-10 left-10 w-32 h-32 bg-studio-blue rounded-full paint-blob"></div>
+        <div className="absolute bottom-20 right-20 w-40 h-40 bg-studio-orange rounded-full paint-blob"></div>
+        <div className="absolute top-1/2 left-1/4 w-20 h-20 bg-studio-green rounded-full paint-blob"></div>
+        <div className="absolute bottom-1/3 left-1/2 w-24 h-24 bg-studio-purple rounded-full paint-blob"></div>
+      </div>
+
+      {/* Left Sidebar - Game Info */}
       <GameSidebar
         gameState={gameState}
         roundState={roundState}
@@ -272,7 +302,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
       />
 
       {/* Main Canvas Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative z-10">
         <GameStatus
           gameState={gameState}
           roundState={roundState}
@@ -282,28 +312,22 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
           onNextRound={handleNextRound}
         />
         
-        <div className="flex-1 flex items-center justify-center p-4">
-          <GameCanvas
-            gameAddress={gameAddress.toString()}
-            width={gameState.canvasWidth}
-            height={gameState.canvasHeight}
-            canDraw={isCurrentArtist() && gameState.started && !isGameOver() && roundState !== null && !roundState.finished}
-            userTeam={getUserTeam()}
-            currentRound={gameState.currentRound}
-            gameStarted={gameState.started}
-            roundFinished={roundState?.finished ?? false}
-            onCanvasUpdate={handleCanvasUpdate}
-          />
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="canvas-container fun-shadow">
+            <GameCanvas
+              gameAddress={gameAddress.toString()}
+              width={gameState.canvasWidth}
+              height={gameState.canvasHeight}
+              canDraw={isCurrentArtist() && gameState.started && !isGameOver() && roundState !== null && !roundState.finished}
+              userTeam={getUserTeam()}
+              currentRound={gameState.currentRound}
+              gameStarted={gameState.started}
+              roundFinished={roundState?.finished ?? false}
+              onCanvasUpdate={handleCanvasUpdate}
+            />
+          </div>
         </div>
       </div>
-
-      {/* Left Sidebar - Games List (commented out for now, keeping code) */}
-      {/* 
-      <div className="w-64 border-r bg-gray-50 p-4">
-        <h3 className="font-semibold mb-4">My Games</h3>
-        <p className="text-sm text-gray-500">Coming soon...</p>
-      </div>
-      */}
     </div>
   );
 }

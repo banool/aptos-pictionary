@@ -206,117 +206,214 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   };
 
   return (
-    <div className="w-80 border-r bg-gray-50 flex flex-col h-screen max-h-screen">
-      {/* Game Info Header */}
-      <div className="p-4 border-b bg-white">
-        <h3 className="font-semibold text-lg mb-2">Game Status</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span>Round:</span>
-            <span className="font-medium">{gameState.currentRound}</span>
+    <div className="w-80 bg-gradient-to-b from-purple-50 to-blue-50 flex flex-col h-screen max-h-screen relative overflow-hidden">
+      {/* Studio Background Splotches */}
+      <div className="absolute inset-0 pointer-events-none opacity-10">
+        <div className="absolute top-10 left-4 w-16 h-16 bg-studio-yellow rounded-full paint-blob"></div>
+        <div className="absolute top-32 right-6 w-12 h-12 bg-studio-pink rounded-full paint-blob"></div>
+        <div className="absolute bottom-40 left-8 w-20 h-20 bg-studio-green rounded-full paint-blob"></div>
+        <div className="absolute bottom-20 right-4 w-14 h-14 bg-studio-orange rounded-full paint-blob"></div>
+      </div>
+
+      {/* Artist Studio Header */}
+      <div className="artist-card m-3 p-4 relative z-10">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-studio-purple rounded-full paint-blob flex items-center justify-center">
+            <span className="text-white text-lg">🎮</span>
           </div>
-          <div className="flex justify-between">
-            <span>Target Score:</span>
-            <span className="font-medium">{gameState.targetScore}</span>
+          <h3 className="font-playful text-xl text-studio-purple">Studio Dashboard</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="text-center">
+            <div className="w-8 h-8 bg-studio-blue rounded-full paint-blob mx-auto mb-1 flex items-center justify-center">
+              <span className="text-white text-sm font-bold">{gameState.currentRound}</span>
+            </div>
+            <span className="text-xs font-bold text-gray-700">Round</span>
+          </div>
+          <div className="text-center">
+            <div className="w-8 h-8 bg-studio-orange rounded-full paint-blob mx-auto mb-1 flex items-center justify-center">
+              <span className="text-white text-sm font-bold">{gameState.targetScore}</span>
+            </div>
+            <span className="text-xs font-bold text-gray-700">Target</span>
           </div>
         </div>
       </div>
 
-      {/* Teams and Scores */}
-      <div className="p-4 border-b bg-white">
-        <h4 className="font-semibold mb-3">Teams & Scores</h4>
+      {/* Artist Teams */}
+      <div className="artist-card m-3 p-4 relative z-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 bg-studio-green rounded-full paint-blob flex items-center justify-center">
+            <span className="text-white text-sm">👥</span>
+          </div>
+          <h4 className="font-playful text-lg text-studio-green">Art Teams 🎨</h4>
+        </div>
         
         {/* Team 1 */}
-        <div className={`mb-4 p-3 rounded-lg ${userTeam === 0 ? "bg-blue-100 border-2 border-blue-300" : "bg-gray-100"}`}>
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-medium">{gameState.team0Name}</span>
-            <span className="text-xl font-bold">{currentScores.team0Score}</span>
+        <div className={`mb-4 artist-card p-4 paint-splatter transition-all duration-300 ${userTeam === 0 ? "ring-4 ring-studio-blue ring-opacity-50 scale-105" : ""}`}>
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
+                <span className="text-white text-xs font-bold">1</span>
+              </div>
+              <span className="font-playful text-studio-blue">{gameState.team0Name}</span>
+            </div>
+            <div className="w-10 h-10 bg-studio-blue rounded-full paint-blob flex items-center justify-center fun-shadow">
+              <span className="text-white font-bold">{currentScores.team0Score}</span>
+            </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {gameState.team0Players.map((player, index) => (
-              <div key={player.toString()} className="text-xs text-gray-600">
-                {getPlayerDisplayName(player)}
-                {index === 0 && <span className="ml-2 text-blue-600">👨‍🎨</span>}
+              <div key={player.toString()} className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-studio-yellow rounded-full paint-blob flex items-center justify-center">
+                  <span className="text-xs">👤</span>
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {getPlayerDisplayName(player)}
+                </span>
+                {index === gameState.currentTeam0Artist && (
+                  <div className="w-6 h-6 bg-studio-orange rounded-full paint-blob flex items-center justify-center ml-auto animate-bounce">
+                    <span className="text-white text-xs">🎨</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
           {roundState?.team0Guessed && (
-            <div className="mt-2 text-xs text-green-600 font-medium">✓ Guessed!</div>
+            <div className="mt-3 flex items-center gap-2 p-2 bg-green-100 rounded-lg">
+              <div className="w-5 h-5 bg-green-500 rounded-full paint-blob flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              <span className="text-green-700 font-bold text-sm">Solved the mystery! 🕵️</span>
+            </div>
           )}
         </div>
 
         {/* Team 2 */}
-        <div className={`p-3 rounded-lg ${userTeam === 1 ? "bg-red-100 border-2 border-red-300" : "bg-gray-100"}`}>
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-medium">{gameState.team1Name}</span>
-            <span className="text-xl font-bold">{currentScores.team1Score}</span>
+        <div className={`artist-card p-4 paint-splatter transition-all duration-300 ${userTeam === 1 ? "ring-4 ring-studio-pink ring-opacity-50 scale-105" : ""}`}>
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-studio-pink rounded-full paint-blob flex items-center justify-center">
+                <span className="text-white text-xs font-bold">2</span>
+              </div>
+              <span className="font-playful text-studio-pink">{gameState.team1Name}</span>
+            </div>
+            <div className="w-10 h-10 bg-studio-pink rounded-full paint-blob flex items-center justify-center fun-shadow">
+              <span className="text-white font-bold">{currentScores.team1Score}</span>
+            </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {gameState.team1Players.map((player, index) => (
-              <div key={player.toString()} className="text-xs text-gray-600">
-                {getPlayerDisplayName(player)}
-                {index === 0 && <span className="ml-2 text-red-600">👨‍🎨</span>}
+              <div key={player.toString()} className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-studio-yellow rounded-full paint-blob flex items-center justify-center">
+                  <span className="text-xs">👤</span>
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {getPlayerDisplayName(player)}
+                </span>
+                {index === gameState.currentTeam1Artist && (
+                  <div className="w-6 h-6 bg-studio-orange rounded-full paint-blob flex items-center justify-center ml-auto animate-bounce">
+                    <span className="text-white text-xs">🎨</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
           {roundState?.team1Guessed && (
-            <div className="mt-2 text-xs text-green-600 font-medium">✓ Guessed!</div>
+            <div className="mt-3 flex items-center gap-2 p-2 bg-green-100 rounded-lg">
+              <div className="w-5 h-5 bg-green-500 rounded-full paint-blob flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              <span className="text-green-700 font-bold text-sm">Solved the mystery! 🕵️</span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Current Word (if round finished) */}
+      {/* Magic Word Reveal */}
       {roundState?.finished && roundState.word && (
-        <div className="p-4 border-b bg-yellow-50">
-          <h4 className="font-semibold mb-2">The word was:</h4>
-          <div className="text-2xl font-bold text-center py-2 bg-white rounded border">
-            {roundState.word}
+        <div className="artist-card m-3 p-4 relative z-10 bounce-in paint-splatter">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-studio-yellow rounded-full paint-blob flex items-center justify-center animate-bounce">
+              <span className="text-white text-sm">✨</span>
+            </div>
+            <h4 className="font-playful text-lg text-studio-yellow">The magic word was...</h4>
+          </div>
+          <div className="text-3xl font-playful text-center py-4 bg-gradient-to-r from-studio-purple to-studio-blue text-white rounded-2xl fun-shadow">
+            {roundState.word} 🎉
           </div>
         </div>
       )}
 
-      {/* Current Word for Artists */}
+      {/* Artist's Secret Word */}
       {isCurrentArtist() && currentWordForArtist && gameState.started && !gameState.finished && roundState && !roundState.finished && (
-        <div className="p-4 border-b bg-blue-50">
-          <h4 className="font-semibold mb-2 text-blue-800">Your Word to Draw:</h4>
-          <div className="text-2xl font-bold text-center py-2 bg-white rounded border text-blue-900">
-            {currentWordForArtist}
+        <div className="artist-card m-3 p-4 relative z-10 paint-splatter">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
+              <span className="text-white text-sm">🎯</span>
+            </div>
+            <h4 className="font-playful text-lg text-studio-blue">Your secret word:</h4>
           </div>
+          <div className="text-2xl font-playful text-center py-4 bg-gradient-to-r from-studio-blue to-studio-purple text-white rounded-2xl fun-shadow animate-pulse">
+            {currentWordForArtist} 🖌️
+          </div>
+          <p className="text-xs text-center text-gray-600 mt-2 font-medium">
+            Shh! 🤫 Only you can see this!
+          </p>
         </div>
       )}
 
-      {/* Guess Input - Only for non-artists who haven't guessed correctly yet */}
+      {/* Magic Guessing Interface */}
       {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && !hasUserTeamGuessed() && (
-        <div className="p-4 border-b">
-          <h4 className="font-semibold mb-3">Make a Guess</h4>
+        <div className="artist-card m-3 p-4 relative z-10 paint-splatter">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-studio-green rounded-full paint-blob flex items-center justify-center">
+              <span className="text-white text-sm">🔮</span>
+            </div>
+            <h4 className="font-playful text-lg text-studio-green">Guess the Magic Word!</h4>
+          </div>
           <div className="flex gap-2">
             <Input
-              placeholder="Enter your guess..."
+              placeholder="What do you think it is? ✨"
               value={guess}
               onChange={(e) => setGuess(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="flex-1"
+              className="flex-1 border-2 border-gray-300 rounded-full px-4 py-2 font-medium focus:border-studio-green focus:ring-2 focus:ring-studio-green focus:ring-opacity-20"
             />
             <Button
               onClick={handleSubmitGuess}
-              size="sm"
               disabled={!guess.trim() || isSubmittingGuess}
+              className="palette-button bg-studio-green hover:bg-studio-blue text-white font-bold px-4 py-2 rounded-full transition-all duration-300"
             >
               {isSubmittingGuess ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="w-5 h-5 bg-white rounded-full paint-blob animate-spin flex items-center justify-center">
+                  <span className="text-studio-green text-xs">✨</span>
+                </div>
               ) : (
-                <Send size={16} />
+                <Send size={16} className="paint-drip" />
               )}
             </Button>
           </div>
+          <p className="text-xs text-center text-gray-600 mt-2 font-medium">
+            🕵️ Study the artwork and make your guess!
+          </p>
         </div>
       )}
 
-      {/* Message when team has already guessed correctly */}
+      {/* Already Solved Message */}
       {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && hasUserTeamGuessed() && (
-        <div className="p-4 border-b bg-green-50">
-          <h4 className="font-semibold mb-2 text-green-800">Already Guessed!</h4>
-          <p className="text-sm text-green-700">Your team has already guessed correctly this round. Wait for the round to finish!</p>
+        <div className="artist-card m-3 p-4 relative z-10 bounce-in">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-green-500 rounded-full paint-blob flex items-center justify-center animate-bounce">
+              <span className="text-white text-sm">🎉</span>
+            </div>
+            <h4 className="font-playful text-lg text-green-600">Mystery Solved!</h4>
+          </div>
+          <div className="text-center p-3 bg-green-100 rounded-2xl">
+            <p className="text-green-700 font-bold mb-1">🏆 Your team cracked the code!</p>
+            <p className="text-sm text-green-600">
+              Sit back and watch other teams figure it out! 🍿
+            </p>
+          </div>
         </div>
       )}
 
