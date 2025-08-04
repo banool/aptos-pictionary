@@ -161,9 +161,7 @@ export const getCanvas = async (
 export const getRoundHistory = async (
   aptos: Aptos, 
   gameAddress: AccountAddress, 
-  currentRound?: number,
-  currentRoundStartTime?: number,
-  roundDuration?: number
+  currentRound?: number
 ): Promise<RoundResult[]> => {
   try {
     const client = createPictionarySurfClient(aptos);

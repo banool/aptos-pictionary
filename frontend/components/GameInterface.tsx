@@ -145,7 +145,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
       });
 
       // Reload game state after starting
-      window.location.reload();
+      await loadGameState(false);
     } catch (error) {
       console.error("Failed to start game:", error);
       alert("Failed to start game. Please try again.");
@@ -171,7 +171,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
       });
 
       // Reload game state after starting next round
-      window.location.reload();
+      await loadGameState(false);
     } catch (error) {
       console.error("Failed to start next round:", error);
       alert("Failed to start next round. Please try again.");
@@ -261,6 +261,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
         userTeam={getUserTeam()}
         getDisplayName={getDisplayName}
         gameAddress={gameAddress}
+        onRefreshGameState={() => loadGameState(false)}
       />
 
       {/* Main Canvas Area */}

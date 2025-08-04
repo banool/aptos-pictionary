@@ -728,6 +728,9 @@ module pictionary::pictionary {
             assert!(is_round_finished(round), EROUND_NOT_ACTIVE);
         };
 
+        // Finish the current round in case it hasn't been finished yet
+        finish_round(game_address);
+
         start_new_round(game_address);
     }
 

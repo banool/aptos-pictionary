@@ -107,20 +107,6 @@ export function GameStatus({
               </p>
             )}
           </div>
-
-          {/* Timer */}
-          {gameState.started && timeLeft !== null && (
-            <div className="flex items-center space-x-2">
-              <Clock size={20} className={timeLeft <= 10 ? "text-red-500" : "text-gray-500"} />
-              <span
-                className={`text-xl font-mono font-bold ${
-                  timeLeft <= 10 ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                {formatTime(timeLeft)}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Action Buttons */}
@@ -139,9 +125,17 @@ export function GameStatus({
             </Button>
           )}
 
-          {gameState.started && roundState && !roundState.finished && timeLeft !== null && (
-            <div className="text-sm text-gray-500">
-              {timeLeft > 0 ? `${timeLeft}s remaining` : "Time's up!"}
+          {/* Timer */}
+          {gameState.started && timeLeft !== null && (
+            <div className="flex items-center space-x-2">
+              <Clock size={20} className={timeLeft <= 10 ? "text-red-500" : "text-gray-500"} />
+              <span
+                className={`text-xl font-mono font-bold ${
+                  timeLeft <= 10 ? "text-red-500" : "text-gray-700"
+                }`}
+              >
+                {formatTime(timeLeft)}
+              </span>
             </div>
           )}
         </div>

@@ -49,9 +49,13 @@ export function GameCanvas({
   const [brushSize, setBrushSize] = useState(5);
   const [pendingDeltas, setPendingDeltas] = useState<CanvasDelta[]>([]);
   const [showColorPalette, setShowColorPalette] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const autoFlushIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [countdown, setCountdown] = useState(5); // Countdown to next submission
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
+  
+  const autoSubmitIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSubmittedIndexRef = useRef<number>(0); // Track how many deltas we've submitted
+  const pendingDeltasRef = useRef<CanvasDelta[]>([]); // Ref to access current deltas in interval
 
 
 
@@ -238,87 +242,93 @@ export function GameCanvas({
   };
 
   const handleMouseUp = () => {
-
     setIsDrawing(false);
-    // Don't auto-flush on mouse up anymore
   };
 
-  // Flush pending deltas to blockchain
-  const flushDeltas = useCallback(async () => {
-    if (pendingDeltas.length === 0) return;
 
-    setIsLoading(true);
-    try {
 
-      
-      if (onCanvasUpdate) {
-        await onCanvasUpdate(pendingDeltas);
-
-        
-        // Clear pending deltas after successful submission
-        setPendingDeltas([]);
-        setCountdown(0);
-
-        // Clear the auto-flush interval
-        if (autoFlushIntervalRef.current) {
-          clearInterval(autoFlushIntervalRef.current);
-          autoFlushIntervalRef.current = null;
-        }
-      } else {
-        console.warn("onCanvasUpdate callback not provided");
-      }
-    } catch (error) {
-      console.error("Failed to flush deltas:", error);
-      // Don't clear deltas on failure - keep them for retry
-      // Reset countdown to try again
-      setCountdown(5);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pendingDeltas, onCanvasUpdate]);
-
-  // Auto-flush effect - start countdown when first delta is added
+  // Simple 5-second interval for submitting deltas with countdown
   useEffect(() => {
-
-
-    // Start countdown only when first delta is added and no interval is running
-    // Also don't start if the round is finished
-    if (pendingDeltas.length === 1 && !autoFlushIntervalRef.current && canDraw && !roundFinished) {
-
-      setCountdown(5); // Start 5-second countdown
+    console.log(`Canvas auto-submit effect: canDraw=${canDraw}, roundFinished=${roundFinished}`);
+    if (canDraw && !roundFinished) {
+      // Reset countdown and start intervals
+      setCountdown(5);
       
-      const interval = setInterval(() => {
+      // Start countdown interval (1 second)
+      countdownIntervalRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
-            // Auto-flush when countdown reaches 0
-            flushDeltas();
-            return 0;
+            return 5; // Reset to 5 when it reaches 0
           }
           return prev - 1;
         });
       }, 1000);
-      
-      autoFlushIntervalRef.current = interval;
+
+      // Start auto-submit interval (5 seconds)
+      console.log('Starting auto-submit interval for canvas');
+      autoSubmitIntervalRef.current = setInterval(async () => {
+        const currentDeltas = [...pendingDeltasRef.current]; // Use ref to get current state
+        const newDeltasCount = currentDeltas.length - lastSubmittedIndexRef.current;
+        
+        console.log(`Auto-submit check: ${currentDeltas.length} total deltas, ${lastSubmittedIndexRef.current} already submitted, ${newDeltasCount} new`);
+        
+        if (newDeltasCount <= 0) return;
+
+        // Get only the new deltas since last submission
+        const newDeltas = currentDeltas.slice(lastSubmittedIndexRef.current);
+
+        try {
+          setIsSubmitting(true);
+          if (onCanvasUpdate) {
+            await onCanvasUpdate(newDeltas);
+            // Update the index of successfully submitted deltas
+            lastSubmittedIndexRef.current = currentDeltas.length;
+            console.log(`Submitted ${newDeltas.length} new canvas deltas`);
+          } else {
+            console.warn("onCanvasUpdate callback not provided");
+          }
+        } catch (error) {
+          console.error("Failed to submit new deltas:", error);
+          // Don't update lastSubmittedIndexRef on failure - will retry next interval
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, 5000);
+    } else {
+      // Clear intervals when can't draw or round is finished
+      if (autoSubmitIntervalRef.current) {
+        console.log('Clearing auto-submit interval for canvas');
+        clearInterval(autoSubmitIntervalRef.current);
+        autoSubmitIntervalRef.current = null;
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      setCountdown(5);
+      setIsSubmitting(false);
     }
 
+    // Cleanup on effect re-run or unmount
     return () => {
-      if (autoFlushIntervalRef.current) {
-        clearInterval(autoFlushIntervalRef.current);
-        autoFlushIntervalRef.current = null;
+      if (autoSubmitIntervalRef.current) {
+        clearInterval(autoSubmitIntervalRef.current);
+        autoSubmitIntervalRef.current = null;
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
       }
     };
-  }, [pendingDeltas.length, canDraw, roundFinished, flushDeltas]);
+  }, [canDraw, roundFinished]);
 
-  // Separate effect to cleanup when no deltas, can't draw, or round is finished
+  // Keep ref in sync with state and reset submission tracking when deltas are cleared
   useEffect(() => {
-    if (pendingDeltas.length === 0 || !canDraw || roundFinished) {
-      if (autoFlushIntervalRef.current) {
-        clearInterval(autoFlushIntervalRef.current);
-        autoFlushIntervalRef.current = null;
-      }
-      setCountdown(0);
+    pendingDeltasRef.current = pendingDeltas;
+    if (pendingDeltas.length === 0) {
+      lastSubmittedIndexRef.current = 0;
     }
-  }, [pendingDeltas.length, canDraw, roundFinished]);
+  }, [pendingDeltas]);
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
@@ -330,7 +340,11 @@ export function GameCanvas({
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, width, height);
     setPendingDeltas([]);
+    lastSubmittedIndexRef.current = 0;
   };
+
+  // Calculate pending changes count for display
+  const pendingChangesCount = Math.max(0, pendingDeltas.length - lastSubmittedIndexRef.current);
 
   return (
     <div className="flex flex-col items-center space-y-4">
@@ -368,23 +382,6 @@ export function GameCanvas({
       {/* Drawing Tools */}
       {canDraw && (
         <div className="flex items-center space-x-4">
-          {/* Manual Flush Button */}
-          {pendingDeltas.length > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={flushDeltas}
-              disabled={isLoading}
-              className="flex items-center space-x-2"
-            >
-              <span>Submit Changes ({pendingDeltas.length})</span>
-              {countdown > 0 && (
-                <span className="text-xs bg-white text-black px-1 rounded">
-                  {countdown}s
-                </span>
-              )}
-            </Button>
-          )}
 
           {/* Color Palette */}
           <div className="relative">
@@ -423,29 +420,39 @@ export function GameCanvas({
             )}
           </div>
 
-          {/* Brush Size */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm">Size:</label>
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={brushSize}
-              onChange={(e) => setBrushSize(Number(e.target.value))}
-              className="w-20"
-            />
-            <span className="text-sm w-6">{brushSize}</span>
-          </div>
-
-          {/* Auto-flush Countdown */}
-          {pendingDeltas.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
-              <Clock size={16} className="text-blue-600" />
-              <span className="text-blue-700">
-                Auto-submit in {countdown}s ({pendingDeltas.length} changes)
-              </span>
+          {/* Brush Size - Hidden for now */}
+          {false && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm">Size:</label>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                value={brushSize}
+                onChange={(e) => setBrushSize(Number(e.target.value))}
+                className="w-20"
+              />
+              <span className="text-sm w-6">{brushSize}</span>
             </div>
           )}
+
+          {/* Auto-save Status */}
+
+          <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-blue-700">Saving...</span>
+              </>
+            ) : (
+              <>
+                <Clock size={16} className="text-blue-600" />
+                <span className="text-blue-700">
+                  Auto-save in {countdown}s ({pendingChangesCount} changes)
+                </span>
+              </>
+            )}
+          </div>
 
           {/* Clear Button */}
           <Button

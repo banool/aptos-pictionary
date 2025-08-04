@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
 import { buildMakeGuessPayload } from "@/entry-functions/gameActions";
-import { getCurrentWordForArtist, getRoundHistory, RoundResult } from "@/view-functions/gameView";
+import { getCurrentWordForArtist, getRoundHistory, getCurrentRound, RoundResult } from "@/view-functions/gameView";
 import { aptos } from "@/utils/aptos";
 import { RoundState } from "@/utils/surf";
+import { useToast } from "@/components/ui/use-toast";
 
 interface GameSidebarProps {
   gameState: {
@@ -29,13 +30,16 @@ interface GameSidebarProps {
   userTeam: number | null;
   getDisplayName?: (address: AccountAddress) => string;
   gameAddress: AccountAddress;
+  onRefreshGameState?: () => Promise<void>;
 }
 
-export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, gameAddress }: GameSidebarProps) {
+export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, gameAddress, onRefreshGameState }: GameSidebarProps) {
   const account = useAuthStore(state => state.activeAccount);
   const [guess, setGuess] = useState("");
   const [roundResults, setRoundResults] = useState<RoundResult[]>([]);
   const [currentWordForArtist, setCurrentWordForArtist] = useState<string>("");
+  const [isSubmittingGuess, setIsSubmittingGuess] = useState(false);
+  const { toast } = useToast();
 
   // Load round history from blockchain
   useEffect(() => {
@@ -44,9 +48,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
         const history = await getRoundHistory(
           aptos, 
           gameAddress,
-          gameState.currentRound,
-          roundState?.startTime,
-          roundState?.durationSeconds
+          gameState.currentRound
         );
         setRoundResults(history);
       } catch (error) {
@@ -57,7 +59,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
     if (gameState.started) {
       loadRoundHistory();
     }
-  }, [gameAddress, gameState.started, gameState.currentRound, roundState?.startTime, roundState?.durationSeconds]);
+  }, [gameAddress, gameState.started, gameState.currentRound, roundState?.startTime, roundState?.durationSeconds, roundState?.finished]);
 
   // Load current word for artist
   useEffect(() => {
@@ -80,27 +82,88 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   }, [account, gameAddress, gameState.started, gameState.finished, gameState.currentRound]);
 
   const handleSubmitGuess = async () => {
-    if (!guess.trim() || !account) return;
+    if (!guess.trim() || !account || isSubmittingGuess) return;
 
+    setIsSubmittingGuess(true);
+    const submittedGuess = guess.trim();
+    
     try {
-      const payload = buildMakeGuessPayload(gameAddress, guess.trim());
+      // Get the current round state before submitting the guess
+      const preGuessRoundState = await getCurrentRound(aptos, gameAddress);
+      
+      const payload = buildMakeGuessPayload(gameAddress, submittedGuess);
       
       const transaction = await aptos.transaction.build.simple({
         sender: account.accountAddress,
         data: payload,
       });
-      await aptos.signAndSubmitTransaction({
+      
+      const result = await aptos.signAndSubmitTransaction({
         signer: account,
         transaction,
       });
+      
+      // Wait for transaction confirmation
+      await aptos.waitForTransaction({
+        transactionHash: result.hash,
+      });
 
+      // Clear the guess input immediately
       setGuess("");
       
-      // Reload the page to get updated game state
-      setTimeout(() => window.location.reload(), 1000);
+      // Wait a moment for blockchain state to update, then check result
+      setTimeout(async () => {
+        try {
+          // Get the updated round state
+          const postGuessRoundState = await getCurrentRound(aptos, gameAddress);
+          
+          // Determine if the guess was correct by checking if team's guessed status changed
+          let wasCorrect = false;
+          if (userTeam !== null) {
+            if (userTeam === 0) {
+              wasCorrect = !preGuessRoundState.team0Guessed && postGuessRoundState.team0Guessed;
+            } else if (userTeam === 1) {
+              wasCorrect = !preGuessRoundState.team1Guessed && postGuessRoundState.team1Guessed;
+            }
+          }
+          
+          // Show appropriate toast feedback
+          if (wasCorrect) {
+            toast({
+              title: "Correct! 🎉",
+              description: `Great job! "${submittedGuess}" was the right answer!`,
+              variant: "default",
+            });
+          } else {
+            toast({
+              title: "Incorrect guess",
+              description: `"${submittedGuess}" wasn't the word. Keep trying!`,
+              variant: "destructive",
+            });
+          }
+          
+          // Refresh the game state instead of reloading the page
+          if (onRefreshGameState) {
+            await onRefreshGameState();
+          }
+        } catch (error) {
+          console.error("Failed to check guess result:", error);
+          // Fallback to just refreshing game state
+          if (onRefreshGameState) {
+            await onRefreshGameState();
+          }
+        } finally {
+          setIsSubmittingGuess(false);
+        }
+      }, 2000); // Wait 2 seconds for blockchain state to update
     } catch (error) {
       console.error("Failed to submit guess:", error);
-      alert("Failed to submit guess. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to submit guess. Please try again.",
+        variant: "destructive",
+      });
+      setIsSubmittingGuess(false);
     }
   };
 
@@ -223,9 +286,13 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             <Button
               onClick={handleSubmitGuess}
               size="sm"
-              disabled={!guess.trim()}
+              disabled={!guess.trim() || isSubmittingGuess}
             >
-              <Send size={16} />
+              {isSubmittingGuess ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Send size={16} />
+              )}
             </Button>
           </div>
         </div>
@@ -248,7 +315,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
           {roundResults.length === 0 ? (
             <p className="text-sm text-gray-500">No rounds completed yet</p>
           ) : (
-            roundResults.map((result) => (
+            roundResults.slice().reverse().map((result) => (
               <div key={result.roundNumber} className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-medium">Round {result.roundNumber}</span>
