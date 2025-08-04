@@ -3,6 +3,7 @@ import { AccountAddress } from "@aptos-labs/ts-sdk";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { Play, SkipForward, Clock } from "lucide-react";
+import { calculateCurrentScores } from "@/utils/gameLogic";
 
 interface GameStatusProps {
   gameState: {
@@ -10,11 +11,20 @@ interface GameStatusProps {
     started: boolean;
     finished: boolean;
     currentRound: number;
+    team0Score: number;
+    team1Score: number;
+    targetScore: number;
+    team0Name: string;
+    team1Name: string;
   };
   roundState: {
     startTime: number;
     durationSeconds: number;
     finished: boolean;
+    team0Guessed: boolean;
+    team1Guessed: boolean;
+    team0GuessTime: number | null;
+    team1GuessTime: number | null;
   } | null;
   userTeam: number | null;
   isCurrentArtist: boolean;
@@ -32,6 +42,8 @@ export function GameStatus({
 }: GameStatusProps) {
   const account = useAuthStore(state => state.activeAccount);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  const currentScores = calculateCurrentScores(gameState, roundState);
 
   // Update timer
   useEffect(() => {
@@ -68,8 +80,10 @@ export function GameStatus({
       return "Waiting for game to start...";
     }
 
-    if (gameState.finished) {
-      return "Game finished!";
+    // Check if game is actually over based on calculated scores
+    if (gameState.finished || currentScores.gameOver) {
+      const winnerName = currentScores.winner === 0 ? gameState.team0Name : gameState.team1Name;
+      return `🎉 Game Over! ${winnerName} wins!`;
     }
 
     if (!roundState) {
@@ -92,7 +106,7 @@ export function GameStatus({
   };
 
   const canStartGame = account && gameState.creator.toString() === account.accountAddress.toString() && !gameState.started;
-  const canStartNextRound = isCurrentArtist && roundState?.finished;
+  const canStartNextRound = userTeam !== null && roundState?.finished && !gameState.finished && !currentScores.gameOver;
 
   return (
     <div className="bg-white border-b p-4">
@@ -126,7 +140,7 @@ export function GameStatus({
           )}
 
           {/* Timer */}
-          {gameState.started && timeLeft !== null && (
+          {gameState.started && timeLeft !== null && !gameState.finished && !currentScores.gameOver && (
             <div className="flex items-center space-x-2">
               <Clock size={20} className={timeLeft <= 10 ? "text-red-500" : "text-gray-500"} />
               <span

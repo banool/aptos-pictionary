@@ -9,6 +9,7 @@ import { getCurrentWordForArtist, getRoundHistory, getCurrentRound, RoundResult 
 import { aptos } from "@/utils/aptos";
 import { RoundState } from "@/utils/surf";
 import { useToast } from "@/components/ui/use-toast";
+import { calculateCurrentScores } from "@/utils/gameLogic";
 
 interface GameSidebarProps {
   gameState: {
@@ -41,44 +42,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   const [isSubmittingGuess, setIsSubmittingGuess] = useState(false);
   const { toast } = useToast();
 
-  // Calculate current scores including unprocessed round points
-  const calculateCurrentScores = (): { team0Score: number; team1Score: number } => {
-    let team0Score = gameState.team0Score; // Start with processed scores from contract
-    let team1Score = gameState.team1Score;
-
-    // Add points from current unprocessed round if applicable
-    if (roundState && gameState.started && !gameState.finished) {
-      // Check if current round has ended but might not be processed yet
-      const currentTime = Date.now() / 1000;
-      const roundEndTime = roundState.startTime + roundState.durationSeconds;
-      const roundTimeExpired = currentTime > roundEndTime;
-      const bothTeamsGuessed = roundState.team0Guessed && roundState.team1Guessed;
-      
-      // If round should be finished (time expired or both guessed), calculate potential points
-      if (roundTimeExpired || bothTeamsGuessed || roundState.finished) {
-        if (roundState.team0Guessed && roundState.team1Guessed) {
-          // Both teams guessed - first gets 2 points, second gets 1
-          if (roundState.team0GuessTime !== null && roundState.team1GuessTime !== null) {
-            if (roundState.team0GuessTime <= roundState.team1GuessTime) {
-              team0Score += 2;
-              team1Score += 1;
-            } else {
-              team0Score += 1;
-              team1Score += 2;
-            }
-          }
-        } else if (roundState.team0Guessed) {
-          team0Score += 2;
-        } else if (roundState.team1Guessed) {
-          team1Score += 2;
-        }
-      }
-    }
-
-    return { team0Score, team1Score };
-  };
-
-  const currentScores = calculateCurrentScores();
+  const currentScores = calculateCurrentScores(gameState, roundState);
 
   // Load round history from blockchain
   useEffect(() => {
@@ -212,12 +176,17 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
     }
   };
 
-  const formatAddress = (address: string) => {
+  const formatAddress = (addressTyped: AccountAddress) => {
+    const address = addressTyped.toString();   
+    // If the address is short enough, just return it as is.
+    if (addressTyped.isSpecial()) {
+      return address;
+    }
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   const getPlayerDisplayName = (player: AccountAddress) => {
-    return getDisplayName ? getDisplayName(player) : formatAddress(player.toString());
+    return getDisplayName ? getDisplayName(player) : formatAddress(player);
   };
 
   const isCurrentArtist = (): boolean => {
@@ -380,7 +349,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
               🎉 {gameState.winner === 0 ? gameState.team0Name : gameState.team1Name} Wins!
             </h3>
             <p className="text-sm text-green-600">
-              Final Score: {gameState.team0Score} - {gameState.team1Score}
+              Final Score: {currentScores.team0Score} - {currentScores.team1Score}
             </p>
           </div>
         </div>

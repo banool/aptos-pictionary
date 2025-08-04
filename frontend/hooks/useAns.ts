@@ -82,5 +82,10 @@ export function getDisplayName(address: string | AccountAddress, ansName: string
   }
   
   const addressStr = address.toString();
+
+  if (addressStr.length <= 10) {
+    return addressStr;
+  }
+
   return `${addressStr.slice(0, 6)}...${addressStr.slice(-4)}`;
 }

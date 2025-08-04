@@ -9,6 +9,7 @@ import { aptos } from "@/utils/aptos";
 import { getGame, getCurrentRound } from "@/view-functions/gameView";
 import { GameState, RoundState, CanvasDelta } from "@/utils/surf";
 import { useAnsMultiplePrimaryNames, getDisplayName as getDisplayNameHelper } from "@/hooks/useAns";
+import { calculateCurrentScores } from "@/utils/gameLogic";
 
 interface GameInterfaceProps {
   gameAddress: AccountAddress;
@@ -105,6 +106,12 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     if (gameState.team0Players.some(addr => addr.toString() === userAddress)) return 0;
     if (gameState.team1Players.some(addr => addr.toString() === userAddress)) return 1;
     return null;
+  };
+
+  // Calculate if game is over based on current scores (including unprocessed rounds)
+  const isGameOver = (): boolean => {
+    if (!gameState) return false;
+    return calculateCurrentScores(gameState, roundState).gameOver;
   };
 
   // Updated getDisplayName to use React Query results
@@ -280,7 +287,7 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
             gameAddress={gameAddress.toString()}
             width={gameState.canvasWidth}
             height={gameState.canvasHeight}
-            canDraw={isCurrentArtist() && gameState.started && !gameState.finished && roundState !== null && !roundState.finished}
+            canDraw={isCurrentArtist() && gameState.started && !isGameOver() && roundState !== null && !roundState.finished}
             userTeam={getUserTeam()}
             currentRound={gameState.currentRound}
             gameStarted={gameState.started}

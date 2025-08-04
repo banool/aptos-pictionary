@@ -191,7 +191,7 @@ export const getRoundHistory = async (
     console.log("Raw rounds data from contract:", rounds);
     
     // Handle the rounds array - it might be nested
-    const roundsArray = Array.isArray(rounds) ? rounds : (rounds as any)[0] as RawRoundSummary[];
+    const roundsArray = Array.isArray(rounds) ? rounds : (rounds as unknown as [RawRoundSummary[]])[0];
     console.log("Processed rounds array:", roundsArray);
     console.log("Number of rounds returned:", roundsArray?.length || 0);
 
