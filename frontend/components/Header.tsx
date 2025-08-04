@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { LoginButton } from "@/components/LoginButton";
 import { AptBalanceDisplay } from "@/components/AptBalanceDisplay";
+import { useAuthStore } from "@/store/auth";
 import { Plus, Palette, Home } from "lucide-react";
 
 interface HeaderProps {
@@ -9,6 +10,8 @@ interface HeaderProps {
 }
 
 export function Header({ onCreateGame, showBackButton }: HeaderProps) {
+  const activeAccount = useAuthStore(state => state.activeAccount);
+
   return (
     <div className="studio-header relative z-10">
       <div className="flex items-center justify-between px-6 py-4 max-w-screen-xl mx-auto w-full flex-wrap relative z-10">
@@ -34,9 +37,11 @@ export function Header({ onCreateGame, showBackButton }: HeaderProps) {
               <span className="font-bold">Home</span>
             </Button>
           )}
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-1 shadow-lg">
-            <AptBalanceDisplay />
-          </div>
+          {activeAccount && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-1 shadow-lg">
+              <AptBalanceDisplay />
+            </div>
+          )}
           {onCreateGame && (
             <Button 
               onClick={onCreateGame} 
@@ -46,9 +51,13 @@ export function Header({ onCreateGame, showBackButton }: HeaderProps) {
               <span className="font-bold">New Game</span>
             </Button>
           )}
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
+          {activeAccount ? (
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg">
+              <LoginButton />
+            </div>
+          ) : (
             <LoginButton />
-          </div>
+          )}
         </div>
       </div>
       
