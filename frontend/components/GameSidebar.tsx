@@ -7,6 +7,7 @@ import { Send } from "lucide-react";
 import { buildMakeGuessPayload } from "@/entry-functions/gameActions";
 import { getCurrentWordForArtist, getRoundHistory, RoundResult } from "@/view-functions/gameView";
 import { aptos } from "@/utils/aptos";
+import { RoundState } from "@/utils/surf";
 
 interface GameSidebarProps {
   gameState: {
@@ -24,12 +25,7 @@ interface GameSidebarProps {
     currentTeam1Artist: number;
     started: boolean;
   };
-  roundState: {
-    word: string;
-    finished: boolean;
-    team0Guessed: boolean;
-    team1Guessed: boolean;
-  } | null;
+  roundState: RoundState | null;
   userTeam: number | null;
   getDisplayName?: (address: AccountAddress) => string;
   gameAddress: AccountAddress;
@@ -45,7 +41,13 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   useEffect(() => {
     const loadRoundHistory = async () => {
       try {
-        const history = await getRoundHistory(aptos, gameAddress);
+        const history = await getRoundHistory(
+          aptos, 
+          gameAddress,
+          gameState.currentRound,
+          roundState?.startTime,
+          roundState?.durationSeconds
+        );
         setRoundResults(history);
       } catch (error) {
         console.error("Failed to load round history:", error);
@@ -55,7 +57,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
     if (gameState.started) {
       loadRoundHistory();
     }
-  }, [gameAddress, gameState.started, gameState.currentRound]);
+  }, [gameAddress, gameState.started, gameState.currentRound, roundState?.startTime, roundState?.durationSeconds]);
 
   // Load current word for artist
   useEffect(() => {

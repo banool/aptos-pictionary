@@ -2,7 +2,7 @@
 export const NETWORK = import.meta.env.VITE_APP_NETWORK ?? "testnet";
 // The address of the published module
 export const MODULE_ADDRESS =
-  import.meta.env.VITE_MODULE_ADDRESS ?? "0xcc4de567219c07e127d50a6abc450e22deb84a687c6e39876e0618cd104a4a69";
+  import.meta.env.VITE_MODULE_ADDRESS ?? "0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1";
 // The API key for the Aptos API (from Aptos Build)
 export const APTOS_API_KEY = import.meta.env.VITE_APTOS_API_KEY ?? "AG-JSPD2XGUVKASR9VYPD16BUXOYBFXY4JKS";
 

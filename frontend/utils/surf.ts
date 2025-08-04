@@ -3,7 +3,7 @@ import { Aptos, AccountAddress } from "@aptos-labs/ts-sdk";
 import { PICTIONARY_ABI } from "./abis";
 
 type ABITable = DefaultABITable & {
-  "0xcc4de567219c07e127d50a6abc450e22deb84a687c6e39876e0618cd104a4a69::pictionary": typeof PICTIONARY_ABI;
+  "0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary": typeof PICTIONARY_ABI;
 };
 
 // Create the Surf client instance with proper receiver-style API
@@ -91,12 +91,39 @@ export const parseOrderedMap = <K, V>(serializedMap: SerializedOrderedMap<K, V>)
   return map;
 };
 
+// Color variant mapping from Move enum to numeric values
+const COLOR_VARIANT_MAP: { [key: string]: number } = {
+  "Black": 0,
+  "White": 1,
+  "Red": 2,
+  "Green": 3,
+  "Blue": 4,
+  "Yellow": 5,
+  "Orange": 6,
+  "Purple": 7,
+  "Pink": 8,
+  "Brown": 9,
+  "Gray": 10,
+};
+
+// Helper function to convert color variant object to numeric value
+const convertColorVariant = (colorVariant: any): number => {
+  if (typeof colorVariant === 'number') {
+    return colorVariant;
+  }
+  if (colorVariant && typeof colorVariant === 'object' && colorVariant.__variant__) {
+    const variantName = colorVariant.__variant__;
+    return COLOR_VARIANT_MAP[variantName] ?? 0; // Default to Black if unknown
+  }
+  return 0; // Default to Black
+};
+
 // Helper function to convert OrderedMap to Canvas format for UI rendering
-export const orderedMapToCanvas = (serializedMap: SerializedOrderedMap<number, number>): Canvas => {
+export const orderedMapToCanvas = (serializedMap: any): Canvas => {
   const canvas: Canvas = {};
   if (serializedMap?.entries) {
-    serializedMap.entries.forEach(({ key, value }) => {
-      canvas[key] = value;
+    serializedMap.entries.forEach(({ key, value }: { key: number, value: any }) => {
+      canvas[key] = convertColorVariant(value);
     });
   }
   return canvas;

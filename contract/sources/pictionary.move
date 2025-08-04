@@ -19,6 +19,8 @@ module pictionary::pictionary {
     // Error codes
     /// Game not found
     const EGAME_NOT_FOUND: u64 = 1;
+    /// Round not found
+    const EROUND_NOT_FOUND: u64 = 13;
     /// Not authorized - only game creator can perform this action
     const ENOT_AUTHORIZED: u64 = 2;
     /// Game already started
@@ -104,8 +106,6 @@ module pictionary::pictionary {
         team0_guess_time: Option<u64>,
         /// Timestamp when team 1 guessed (if they did)
         team1_guess_time: Option<u64>,
-        /// Whether this round has completed
-        finished: bool,
     }
 
     /// Main game state stored as an Aptos object
@@ -372,11 +372,38 @@ module pictionary::pictionary {
         assert!(game.started, EGAME_NOT_STARTED);
         assert!(!game.finished, EGAME_FINISHED);
 
-        // Select a random word
+        // Get all previously used words in this game
+        let used_words = vector::empty<String>();
+        let i = 0;
+        while (i < vector::length(&game.rounds)) {
+            let round = vector::borrow(&game.rounds, i);
+            vector::push_back(&mut used_words, round.word);
+            i = i + 1;
+        };
+
+        // Select a random word that hasn't been used yet
         let word_list_address = object::create_object_address(&@pictionary, b"WordList");
         let word_list = borrow_global<WordList>(word_list_address);
-        let word_index = randomness::u64_range(0, vector::length(&word_list.words));
-        let word = *vector::borrow(&word_list.words, word_index);
+        
+        // Build list of available words (not yet used in this game)
+        let available_words = vector::empty<String>();
+        let j = 0;
+        while (j < vector::length(&word_list.words)) {
+            let candidate_word = *vector::borrow(&word_list.words, j);
+            if (!vector::contains(&used_words, &candidate_word)) {
+                vector::push_back(&mut available_words, candidate_word);
+            };
+            j = j + 1;
+        };
+
+        // If all words have been used, reset and use the full list
+        // This prevents games from getting stuck if they exceed the word list size
+        if (vector::is_empty(&available_words)) {
+            available_words = word_list.words;
+        };
+
+        let word_index = randomness::u64_range(0, vector::length(&available_words));
+        let word = *vector::borrow(&available_words, word_index);
 
         // Create new canvases for this round
         let team0_canvas = Canvas {
@@ -405,7 +432,6 @@ module pictionary::pictionary {
             team1_guessed: false,
             team0_guess_time: option::none(),
             team1_guess_time: option::none(),
-            finished: false,
         };
 
         vector::push_back(&mut game.rounds, round);
@@ -455,15 +481,14 @@ module pictionary::pictionary {
         let artist_address = signer::address_of(artist);
         let current_round_index = game.current_round - 1;
         let round = vector::borrow_mut(&mut game.rounds, current_round_index);
-        assert!(!round.finished, EROUND_NOT_ACTIVE);
-
-        // Check if round has expired
-        let current_time = timestamp::now_seconds();
-        if (current_time > round.start_time + round.duration_seconds) {
-            round.finished = true;
+        
+        // Check if round is already finished
+        if (is_round_finished(round)) {
             finish_round(game_address);
             return
         };
+        
+        assert!(!is_round_finished(round), EROUND_NOT_ACTIVE);
 
         // Verify it's the artist's turn
         if (team == 0) {
@@ -481,12 +506,14 @@ module pictionary::pictionary {
             &mut round.team1_canvas
         };
 
+        let max_position = (canvas.width as u32) * (canvas.height as u32);
+        let current_time = timestamp::now_seconds();
+
         let i = 0;
         while (i < vector::length(&deltas)) {
             let delta = vector::borrow(&deltas, i);
             
             // Validate position is within canvas bounds
-            let max_position = (canvas.width as u32) * (canvas.height as u32);
             assert!((delta.position as u32) < max_position, EINVALID_CANVAS_POSITION);
             
             ordered_map::upsert(&mut canvas.pixels, delta.position, delta.color);
@@ -530,15 +557,16 @@ module pictionary::pictionary {
         assert!(!is_team0_artist && !is_team1_artist, ENOT_ARTIST_TURN); // Reusing error code - artists can't guess
         
         let round = vector::borrow_mut(&mut game.rounds, current_round_index);
-        assert!(!round.finished, EROUND_NOT_ACTIVE);
-
-        // Check if round has expired
-        let current_time = timestamp::now_seconds();
-        if (current_time > round.start_time + round.duration_seconds) {
-            round.finished = true;
+        
+        // Check if round is already finished
+        if (is_round_finished(round)) {
             finish_round(game_address);
             return
         };
+        
+        assert!(!is_round_finished(round), EROUND_NOT_ACTIVE);
+        
+        let current_time = timestamp::now_seconds();
         
         // Emit guess event
         event::emit(GuessSubmitted {
@@ -577,6 +605,18 @@ module pictionary::pictionary {
         }
     }
 
+    /// Determines if a round is finished based on multiple criteria
+    /// A round is finished if:
+    /// 1. Both teams have guessed correctly, OR
+    /// 2. The time limit has expired
+    fun is_round_finished(round: &Round): bool {
+        let current_time = timestamp::now_seconds();
+        let time_expired = current_time > round.start_time + round.duration_seconds;
+        let both_guessed = round.team0_guessed && round.team1_guessed;
+        
+        time_expired || both_guessed
+    }
+
     /// Converts a u8 value to the corresponding Color enum variant
     /// Used for canvas delta updates from frontend
     fun u8_to_color(value: u8): Color {
@@ -601,11 +641,10 @@ module pictionary::pictionary {
         let current_round_index = game.current_round - 1;
         let round = vector::borrow_mut(&mut game.rounds, current_round_index);
         
-        if (round.finished) {
+        // Check if already processed (avoid double processing)
+        if (is_round_finished(round)) {
             return // Already finished
         };
-
-        round.finished = true;
 
         // Calculate points
         let team0_points = 0u64;
@@ -686,7 +725,7 @@ module pictionary::pictionary {
         if (game.current_round > 0) {
             let current_round_index = game.current_round - 1;
             let round = vector::borrow(&game.rounds, current_round_index);
-            assert!(round.finished, EROUND_NOT_ACTIVE);
+            assert!(is_round_finished(round), EROUND_NOT_ACTIVE);
         };
 
         start_new_round(game_address);
@@ -757,8 +796,10 @@ module pictionary::pictionary {
         let current_round_index = game.current_round - 1;
         let round = vector::borrow(&game.rounds, current_round_index);
         
+        let round_finished = is_round_finished(round);
+        
         // Only reveal word if round is finished
-        let word_to_show = if (round.finished) {
+        let word_to_show = if (round_finished) {
             round.word
         } else {
             string::utf8(b"")
@@ -771,7 +812,7 @@ module pictionary::pictionary {
             round.duration_seconds,
             round.team0_guessed,
             round.team1_guessed,
-            round.finished,
+            round_finished,
             round.team0_guess_time,
             round.team1_guess_time,
         )
@@ -782,7 +823,7 @@ module pictionary::pictionary {
     public fun get_canvas(game_address: address, round_number: u64, team: u64): OrderedMap<u16, Color> acquires Game {
         let game = borrow_global<Game>(game_address);
         assert!(team == 0 || team == 1, EINVALID_TEAM);
-        assert!(round_number < vector::length(&game.rounds), EGAME_NOT_FOUND);
+        assert!(round_number < vector::length(&game.rounds), EROUND_NOT_FOUND);
 
         let round = vector::borrow(&game.rounds, round_number);
         let canvas = if (team == 0) {
@@ -798,11 +839,12 @@ module pictionary::pictionary {
     struct RoundSummary has copy, drop {
         round_number: u64,
         word: String,
+        start_time: u64,
+        duration_seconds: u64,
         team0_guessed: bool,
         team1_guessed: bool,
         team0_guess_time: Option<u64>,
         team1_guess_time: Option<u64>,
-        finished: bool,
     }
 
     #[view]
@@ -817,11 +859,12 @@ module pictionary::pictionary {
             let summary = RoundSummary {
                 round_number: round.round_number,
                 word: round.word,
+                start_time: round.start_time,
+                duration_seconds: round.duration_seconds,
                 team0_guessed: round.team0_guessed,
                 team1_guessed: round.team1_guessed,
                 team0_guess_time: round.team0_guess_time,
                 team1_guess_time: round.team1_guess_time,
-                finished: round.finished,
             };
             vector::push_back(&mut summaries, summary);
             i = i + 1;
@@ -842,7 +885,7 @@ module pictionary::pictionary {
         let round = vector::borrow(&game.rounds, current_round_index);
         
         // Return word if round is finished or if player is current artist
-        if (round.finished) {
+        if (is_round_finished(round)) {
             return round.word
         };
         

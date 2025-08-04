@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import { useAuthStore } from "@/store/auth";
 import { GameCanvas } from "@/components/GameCanvas";
@@ -8,6 +8,7 @@ import { buildStartGamePayload, buildNextRoundPayload, buildSubmitCanvasDeltaPay
 import { aptos } from "@/utils/aptos";
 import { getGame, getCurrentRound } from "@/view-functions/gameView";
 import { GameState, RoundState, CanvasDelta } from "@/utils/surf";
+import { useAnsMultiplePrimaryNames, getDisplayName as getDisplayNameHelper } from "@/hooks/useAns";
 
 interface GameInterfaceProps {
   gameAddress: AccountAddress;
@@ -19,70 +20,83 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
   const account = useAuthStore(state => state.activeAccount);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
-  const [ansNames, setAnsNames] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get all unique addresses from game state for ANS resolution
+  const allAddresses = gameState 
+    ? [...gameState.team0Players, ...gameState.team1Players, gameState.creator]
+    : [];
+
+  // Use React Query to resolve ANS names for all addresses
+  const ansQueries = useAnsMultiplePrimaryNames(allAddresses);
 
   // Load game state from blockchain
-  useEffect(() => {
-    const loadGameState = async () => {
+  const loadGameState = async (isInitialLoad = false) => {
+    if (isInitialLoad) {
       setLoading(true);
-      try {
-        // Try to load actual game state from the contract
-        const gameStateData = await getGame(aptos, gameAddress);
-        const roundStateData = await getCurrentRound(aptos, gameAddress);
-        
-        setGameState(gameStateData);
-        setRoundState(roundStateData);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to load game state:", err);
+    }
+    
+    try {
+      // Try to load actual game state from the contract
+      const gameStateData = await getGame(aptos, gameAddress);
+      const roundStateData = await getCurrentRound(aptos, gameAddress);
+      
+      setGameState(gameStateData);
+      setRoundState(roundStateData);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to load game state:", err);
+      if (isInitialLoad) {
         setError(err instanceof Error ? err.message : "Failed to load game state");
         setGameState(null);
         setRoundState(null);
-      } finally {
+      }
+      // For polling updates, don't update error state - keep the game running
+    } finally {
+      if (isInitialLoad) {
         setLoading(false);
       }
-    };
-
-    if (account && gameAddress) {
-      loadGameState();
-    }
-  }, [account, gameAddress]);
-
-  // Function to resolve account addresses to ANS names
-  const resolveAnsNames = async (addresses: AccountAddress[]) => {
-    const newAnsNames: Record<string, string | null> = {};
-    
-    for (const address of addresses) {
-      const addressStr = address.toString();
-      if (!ansNames[addressStr]) {
-        try {
-          const ansName = await aptos.ans.getPrimaryName({ address: addressStr });
-          newAnsNames[addressStr] = ansName || null;
-        } catch (err) {
-          console.log(`No ANS name found for address: ${addressStr}`, err);
-          newAnsNames[addressStr] = null;
-        }
-      }
-    }
-    
-    if (Object.keys(newAnsNames).length > 0) {
-      setAnsNames(prev => ({ ...prev, ...newAnsNames }));
     }
   };
 
-  // Resolve ANS names when game state changes
+  // Initial load and setup polling
   useEffect(() => {
-    if (gameState) {
-      const allAddresses = [
-        gameState.creator,
-        ...gameState.team0Players,
-        ...gameState.team1Players
-      ];
-      resolveAnsNames(allAddresses);
+    if (!account || !gameAddress) return;
+
+    // Initial load
+    loadGameState(true);
+
+    // Set up polling for real-time updates (every 3 seconds)
+    pollingIntervalRef.current = setInterval(() => {
+      loadGameState(false);
+    }, 3000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [account, gameAddress]);
+
+  // Helper function to get display name using React Query results
+  const getDisplayNameFromQueries = (address: AccountAddress): string => {
+    const addressStr = address.toString();
+    
+    // Find the corresponding query result for this address
+    const queryResult = ansQueries.find(query => {
+      return query.data?.address === addressStr;
+    });
+    
+    if (queryResult?.data?.ansName) {
+      return queryResult.data.ansName;
     }
-  }, [gameState]);
+    
+    // Fallback to getDisplayName helper from useAns hook
+    return getDisplayNameHelper(address, null);
+  };
 
   const getUserTeam = (): number | null => {
     if (!account || !gameState) return null;
@@ -93,15 +107,9 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     return null;
   };
 
-  // Helper function to get display name (ANS name or truncated address)
+  // Updated getDisplayName to use React Query results
   const getDisplayName = (address: AccountAddress): string => {
-    const addressStr = address.toString();
-    const ansName = ansNames[addressStr];
-    if (ansName) {
-      return ansName;
-    }
-    // Return truncated address as fallback
-    return `${addressStr.slice(0, 6)}...${addressStr.slice(-4)}`;
+    return getDisplayNameFromQueries(address);
   };
 
   const isCurrentArtist = (): boolean => {
@@ -183,16 +191,33 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
     const positions = deltas.map(d => d.position);
     const colors = deltas.map(d => d.color);
 
-    const payload = buildSubmitCanvasDeltaPayload(gameAddress, userTeam, positions, colors);
-    
-    const transaction = await aptos.transaction.build.simple({
-      sender: account.accountAddress,
-      data: payload,
-    });
-    await aptos.signAndSubmitTransaction({
-      signer: account,
-      transaction,
-    });
+    console.log("Submitting canvas update:", { positions, colors, userTeam, gameAddress: gameAddress.toString() });
+
+    try {
+      const payload = buildSubmitCanvasDeltaPayload(gameAddress, userTeam, positions, colors);
+      
+      const transaction = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
+        data: payload,
+      });
+      
+      const response = await aptos.signAndSubmitTransaction({
+        signer: account,
+        transaction,
+      });
+      
+      console.log("Canvas update transaction submitted:", response.hash);
+      
+      // Wait for transaction confirmation
+      const result = await aptos.waitForTransaction({
+        transactionHash: response.hash,
+      });
+      
+      console.log("Canvas update transaction confirmed:", result);
+    } catch (error) {
+      console.error("Failed to submit canvas update transaction:", error);
+      throw error; // Re-throw to let the canvas component handle retry
+    }
   };
 
   if (loading) {
@@ -256,6 +281,9 @@ export function GameInterface({ gameAddress }: GameInterfaceProps) {
             height={gameState.canvasHeight}
             canDraw={isCurrentArtist() && gameState.started && !gameState.finished && roundState !== null && !roundState.finished}
             userTeam={getUserTeam()}
+            currentRound={gameState.currentRound}
+            gameStarted={gameState.started}
+            roundFinished={roundState?.finished ?? false}
             onCanvasUpdate={handleCanvasUpdate}
           />
         </div>

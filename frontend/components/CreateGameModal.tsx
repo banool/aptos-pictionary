@@ -15,6 +15,7 @@ import { Plus, Minus } from "lucide-react";
 import { buildCreateGamePayload } from "@/entry-functions/createGame";
 import { aptos } from "@/utils/aptos";
 import { MODULE_ADDRESS } from "@/constants";
+import { useAnsPrimaryName } from "@/hooks/useAns";
 
 interface CreateGameModalProps {
   open: boolean;
@@ -47,46 +48,30 @@ export function CreateGameModal({
   const [roundDuration, setRoundDuration] = useState("60");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get user's ANS name or use their address
+  // Use React Query to get user's ANS name with caching
+  const { data: userAnsName } = useAnsPrimaryName(account?.accountAddress ?? null);
+  
+  // Update userDisplayName when ANS data or account changes
   useEffect(() => {
-    const getUserDisplayName = async () => {
-      if (!account) {
+    if (!account) {
+      setUserDisplayName("");
+      return;
+    }
+
+    try {
+      if (!account.accountAddress || typeof account.accountAddress.toString !== 'function') {
+        console.warn('Invalid account object');
         setUserDisplayName("");
         return;
       }
 
-      try {
-        // Validate account before using it
-        if (!account.accountAddress || typeof account.accountAddress.toString !== 'function') {
-          console.warn('Invalid account object in getUserDisplayName');
-          setUserDisplayName("");
-          return;
-        }
-
-        const addressString = account.accountAddress.toString();
-        
-        // Try to get their ANS name first
-        const ansName = await aptos.ans.getPrimaryName({ 
-          address: addressString 
-        });
-        setUserDisplayName(ansName || addressString);
-      } catch (error) {
-        console.warn('Error getting user display name:', error);
-        try {
-          // Fallback: try to use just the address
-          const addressString = account.accountAddress.toString();
-          setUserDisplayName(addressString);
-        } catch (addressError) {
-          console.error('Cannot access account address:', addressError);
-          setUserDisplayName("");
-        }
-      }
-    };
-
-    if (open && account) {
-      getUserDisplayName();
+      const addressString = account.accountAddress.toString();
+      setUserDisplayName(userAnsName || addressString);
+    } catch (error) {
+      console.error('Error setting user display name:', error);
+      setUserDisplayName("");
     }
-  }, [account, open]);
+  }, [account, userAnsName, open]);
 
   // Prefill user's address when modal opens and reset when closed
   useEffect(() => {

@@ -2,6 +2,9 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Palette, Eraser, Clock } from "lucide-react";
 import { CanvasDelta } from "@/utils/surf";
+import { getCanvas } from "@/view-functions/gameView";
+import { aptos } from "@/utils/aptos";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
 
 interface GameCanvasProps {
   gameAddress: string;
@@ -9,10 +12,11 @@ interface GameCanvasProps {
   height: number;
   canDraw: boolean;
   userTeam: number | null;
+  currentRound: number;
+  gameStarted: boolean;
+  roundFinished: boolean;
   onCanvasUpdate?: (deltas: CanvasDelta[]) => Promise<void>;
 }
-
-
 
 const COLORS = [
   { name: "Black", value: 0, hex: "#000000" },
@@ -26,9 +30,6 @@ const COLORS = [
   { name: "Pink", value: 8, hex: "#FFC0CB" },
   { name: "Brown", value: 9, hex: "#A52A2A" },
   { name: "Gray", value: 10, hex: "#808080" },
-  { name: "Light Blue", value: 11, hex: "#ADD8E6" },
-  { name: "Light Green", value: 12, hex: "#90EE90" },
-  { name: "Light Red", value: 13, hex: "#FFB6C1" },
 ];
 
 export function GameCanvas({
@@ -37,6 +38,9 @@ export function GameCanvas({
   height,
   canDraw,
   userTeam,
+  currentRound,
+  gameStarted,
+  roundFinished,
   onCanvasUpdate,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -46,9 +50,85 @@ export function GameCanvas({
   const [pendingDeltas, setPendingDeltas] = useState<CanvasDelta[]>([]);
   const [showColorPalette, setShowColorPalette] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [autoFlushInterval, setAutoFlushInterval] = useState<NodeJS.Timeout | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const autoFlushIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize canvas
+
+
+  // Load canvas data from blockchain
+  const loadCanvasData = useCallback(async () => {
+    // Early return conditions
+    if (userTeam === null || !gameStarted || currentRound <= 0) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Convert currentRound (1-based) to array index (0-based) for the contract
+    const roundIndex = Math.max(0, currentRound - 1);
+
+    try {
+      
+      const canvasData = await getCanvas(
+        aptos,
+        AccountAddress.fromString(gameAddress),
+        roundIndex,
+        userTeam
+      );
+
+      // Clear canvas with white background first
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw existing pixels
+      Object.entries(canvasData).forEach(([position, colorValue]) => {
+        const pos = parseInt(position);
+        
+        // Convert from scaled coordinate system back to canvas coordinates
+        // The position was stored as: scaledY * 256 + scaledX where scaled coords are 0-255
+        const scaledX = pos % 256;
+        const scaledY = Math.floor(pos / 256);
+        
+        // Convert back to actual canvas coordinates
+        const x = Math.floor((scaledX / 255) * width);
+        const y = Math.floor((scaledY / 255) * height);
+        
+
+        
+        const color = COLORS.find(c => c.value === colorValue);
+        
+        if (color && x >= 0 && x < width && y >= 0 && y < height) {
+          ctx.fillStyle = color.hex;
+          // Draw with the same brush size as used during drawing
+          ctx.beginPath();
+          ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      });
+
+    } catch (error) {
+      console.error("Failed to load canvas data:", error);
+      
+      // Check if this is a round not found error (common during round transitions)
+      const isRoundNotFoundError = error instanceof Error && 
+        error.message.includes("EROUND_NOT_FOUND");
+      
+      if (!isRoundNotFoundError) {
+        console.error("Unexpected error loading canvas:", error);
+      }
+      
+      // Continue without loading - don't break the app
+      // Clear the canvas if we can't load data
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, width, height);
+    }
+  }, [width, height, gameAddress, gameStarted, userTeam, currentRound, canDraw, brushSize]);
+
+  // Initialize canvas and load existing data
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -64,8 +144,25 @@ export function GameCanvas({
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, width, height);
 
-    // TODO: Load existing canvas data from blockchain
-  }, [width, height, gameAddress]);
+    // Load initial canvas data
+    loadCanvasData();
+  }, [width, height, gameAddress, gameStarted, userTeam, currentRound, loadCanvasData]);
+
+  // Periodic canvas reloading for real-time updates (only for guessers, not artists)
+  useEffect(() => {
+    // Only refresh periodically for guessers, not for artists who are actively drawing
+    // Also stop refreshing if the round is finished
+    if (!gameStarted || userTeam === null || canDraw || roundFinished) return;
+
+    // Set up interval to reload canvas data every 2 seconds to show artist's progress
+    const reloadInterval = setInterval(() => {
+      loadCanvasData();
+    }, 2000);
+
+    return () => {
+      clearInterval(reloadInterval);
+    };
+  }, [gameStarted, userTeam, canDraw, roundFinished, loadCanvasData]);
 
   // Convert mouse position to canvas position
   const getCanvasPosition = useCallback(
@@ -113,20 +210,23 @@ export function GameCanvas({
 
       // Add to pending deltas
       const position = positionToIndex(x, y);
-      setPendingDeltas(prev => [
-        ...prev,
-        { position, color: colorIndex }
-      ]);
+      const newDelta = { position, color: colorIndex };
+      
+
+      
+      setPendingDeltas(prev => [...prev, newDelta]);
     },
-    [brushSize, width]
+    [brushSize, width, height]
   );
 
   // Handle mouse events
   const handleMouseDown = (e: React.MouseEvent) => {
+
     if (!canDraw) return;
 
     setIsDrawing(true);
     const { x, y } = getCanvasPosition(e);
+
     drawPixel(x, y, selectedColor);
   };
 
@@ -138,6 +238,7 @@ export function GameCanvas({
   };
 
   const handleMouseUp = () => {
+
     setIsDrawing(false);
     // Don't auto-flush on mouse up anymore
   };
@@ -146,30 +247,44 @@ export function GameCanvas({
   const flushDeltas = useCallback(async () => {
     if (pendingDeltas.length === 0) return;
 
+    setIsLoading(true);
     try {
-      console.log("Flushing deltas to blockchain:", pendingDeltas);
+
       
       if (onCanvasUpdate) {
         await onCanvasUpdate(pendingDeltas);
-      }
-      
-      // Clear pending deltas after successful submission
-      setPendingDeltas([]);
-      setCountdown(0);
 
-      // Clear the auto-flush interval
-      if (autoFlushInterval) {
-        clearInterval(autoFlushInterval);
-        setAutoFlushInterval(null);
+        
+        // Clear pending deltas after successful submission
+        setPendingDeltas([]);
+        setCountdown(0);
+
+        // Clear the auto-flush interval
+        if (autoFlushIntervalRef.current) {
+          clearInterval(autoFlushIntervalRef.current);
+          autoFlushIntervalRef.current = null;
+        }
+      } else {
+        console.warn("onCanvasUpdate callback not provided");
       }
     } catch (error) {
       console.error("Failed to flush deltas:", error);
+      // Don't clear deltas on failure - keep them for retry
+      // Reset countdown to try again
+      setCountdown(5);
+    } finally {
+      setIsLoading(false);
     }
-  }, [pendingDeltas, onCanvasUpdate, autoFlushInterval]);
+  }, [pendingDeltas, onCanvasUpdate]);
 
-  // Auto-flush effect - start countdown when deltas are added
+  // Auto-flush effect - start countdown when first delta is added
   useEffect(() => {
-    if (pendingDeltas.length > 0 && !autoFlushInterval && canDraw) {
+
+
+    // Start countdown only when first delta is added and no interval is running
+    // Also don't start if the round is finished
+    if (pendingDeltas.length === 1 && !autoFlushIntervalRef.current && canDraw && !roundFinished) {
+
       setCountdown(5); // Start 5-second countdown
       
       const interval = setInterval(() => {
@@ -183,24 +298,27 @@ export function GameCanvas({
         });
       }, 1000);
       
-      setAutoFlushInterval(interval);
-    }
-
-    // Cleanup interval when no deltas or can't draw
-    if (pendingDeltas.length === 0 || !canDraw) {
-      if (autoFlushInterval) {
-        clearInterval(autoFlushInterval);
-        setAutoFlushInterval(null);
-      }
-      setCountdown(0);
+      autoFlushIntervalRef.current = interval;
     }
 
     return () => {
-      if (autoFlushInterval) {
-        clearInterval(autoFlushInterval);
+      if (autoFlushIntervalRef.current) {
+        clearInterval(autoFlushIntervalRef.current);
+        autoFlushIntervalRef.current = null;
       }
     };
-  }, [pendingDeltas.length, canDraw, autoFlushInterval, flushDeltas]);
+  }, [pendingDeltas.length, canDraw, roundFinished, flushDeltas]);
+
+  // Separate effect to cleanup when no deltas, can't draw, or round is finished
+  useEffect(() => {
+    if (pendingDeltas.length === 0 || !canDraw || roundFinished) {
+      if (autoFlushIntervalRef.current) {
+        clearInterval(autoFlushIntervalRef.current);
+        autoFlushIntervalRef.current = null;
+      }
+      setCountdown(0);
+    }
+  }, [pendingDeltas.length, canDraw, roundFinished]);
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
@@ -220,21 +338,27 @@ export function GameCanvas({
       <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
         <canvas
           ref={canvasRef}
-          className={`block ${canDraw ? "cursor-crosshair" : "cursor-not-allowed"}`}
-          style={{ maxWidth: "100%", maxHeight: "60vh" }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={() => setIsDrawing(false)}
+          className={`block ${canDraw ? "cursor-crosshair" : "cursor-default"}`}
+          style={{ maxWidth: "100%", maxHeight: "60vh", pointerEvents: canDraw ? "auto" : "none" }}
+          onMouseDown={canDraw ? handleMouseDown : undefined}
+          onMouseMove={canDraw ? handleMouseMove : undefined}
+          onMouseUp={canDraw ? handleMouseUp : undefined}
+          onMouseLeave={canDraw ? () => setIsDrawing(false) : undefined}
         />
         
-        {!canDraw && (
-          <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+        {!canDraw && userTeam !== null && (
+          <div className="absolute top-2 left-2 bg-blue-100 border border-blue-300 px-3 py-1 rounded-md shadow-sm">
+            <p className="text-xs font-medium text-blue-800">
+              👀 Watching your team's artist draw
+            </p>
+          </div>
+        )}
+        
+        {!canDraw && userTeam === null && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <div className="bg-white px-4 py-2 rounded-md shadow-md">
               <p className="text-sm font-medium">
-                {userTeam === null
-                  ? "You're not playing in this game"
-                  : "Wait for your turn to draw"}
+                You're not playing in this game
               </p>
             </div>
           </div>
@@ -244,6 +368,24 @@ export function GameCanvas({
       {/* Drawing Tools */}
       {canDraw && (
         <div className="flex items-center space-x-4">
+          {/* Manual Flush Button */}
+          {pendingDeltas.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={flushDeltas}
+              disabled={isLoading}
+              className="flex items-center space-x-2"
+            >
+              <span>Submit Changes ({pendingDeltas.length})</span>
+              {countdown > 0 && (
+                <span className="text-xs bg-white text-black px-1 rounded">
+                  {countdown}s
+                </span>
+              )}
+            </Button>
+          )}
+
           {/* Color Palette */}
           <div className="relative">
             <Button
