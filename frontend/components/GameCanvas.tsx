@@ -32,6 +32,8 @@ const COLORS = [
   { name: "Gray", value: 10, hex: "#808080" },
 ];
 
+const AUTO_SAVE_INTERVAL_SECS = 3;
+
 export function GameCanvas({
   gameAddress,
   width,
@@ -49,7 +51,7 @@ export function GameCanvas({
   const [brushSize, setBrushSize] = useState(5);
   const [pendingDeltas, setPendingDeltas] = useState<CanvasDelta[]>([]);
   const [showColorPalette, setShowColorPalette] = useState(false);
-  const [countdown, setCountdown] = useState(5); // Countdown to next submission
+  const [countdown, setCountdown] = useState(AUTO_SAVE_INTERVAL_SECS); // Countdown to next submission
   const [isSubmitting, setIsSubmitting] = useState(false); // Track submission state
   
   const autoSubmitIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -252,19 +254,19 @@ export function GameCanvas({
     console.log(`Canvas auto-submit effect: canDraw=${canDraw}, roundFinished=${roundFinished}`);
     if (canDraw && !roundFinished) {
       // Reset countdown and start intervals
-      setCountdown(5);
+      setCountdown(AUTO_SAVE_INTERVAL_SECS);
       
       // Start countdown interval (1 second)
       countdownIntervalRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
-            return 5; // Reset to 5 when it reaches 0
+            return AUTO_SAVE_INTERVAL_SECS; // Reset to 5 when it reaches 0
           }
           return prev - 1;
         });
       }, 1000);
 
-      // Start auto-submit interval (5 seconds)
+      // Start auto-submit interval (AUTO_SAVE_INTERVAL_SECS seconds)
       console.log('Starting auto-submit interval for canvas');
       autoSubmitIntervalRef.current = setInterval(async () => {
         const currentDeltas = [...pendingDeltasRef.current]; // Use ref to get current state
@@ -293,7 +295,7 @@ export function GameCanvas({
         } finally {
           setIsSubmitting(false);
         }
-      }, 5000);
+      }, AUTO_SAVE_INTERVAL_SECS * 1000);
     } else {
       // Clear intervals when can't draw or round is finished
       if (autoSubmitIntervalRef.current) {
@@ -305,7 +307,7 @@ export function GameCanvas({
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
       }
-      setCountdown(5);
+      setCountdown(AUTO_SAVE_INTERVAL_SECS);
       setIsSubmitting(false);
     }
 

@@ -199,6 +199,12 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
     return team0Artist?.toString() === userAddress || team1Artist?.toString() === userAddress;
   };
 
+  const hasUserTeamGuessed = (): boolean => {
+    if (!roundState || userTeam === null) return false;
+    
+    return userTeam === 0 ? roundState.team0Guessed : roundState.team1Guessed;
+  };
+
   return (
     <div className="w-80 border-r bg-gray-50 flex flex-col h-screen max-h-screen">
       {/* Game Info Header */}
@@ -279,8 +285,8 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
         </div>
       )}
 
-      {/* Guess Input - Only for non-artists */}
-      {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && (
+      {/* Guess Input - Only for non-artists who haven't guessed correctly yet */}
+      {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && !hasUserTeamGuessed() && (
         <div className="p-4 border-b">
           <h4 className="font-semibold mb-3">Make a Guess</h4>
           <div className="flex gap-2">
@@ -303,6 +309,14 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
               )}
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Message when team has already guessed correctly */}
+      {userTeam !== null && !gameState.finished && !isCurrentArtist() && gameState.started && hasUserTeamGuessed() && (
+        <div className="p-4 border-b bg-green-50">
+          <h4 className="font-semibold mb-2 text-green-800">Already Guessed!</h4>
+          <p className="text-sm text-green-700">Your team has already guessed correctly this round. Wait for the round to finish!</p>
         </div>
       )}
 

@@ -798,11 +798,11 @@ module pictionary::pictionary {
 
         let caller_address = signer::address_of(caller);
         
-        // Check if caller is one of the current artists
-        let is_team0_artist = *vector::borrow(&game.team0_players, game.current_team0_artist) == caller_address;
-        let is_team1_artist = *vector::borrow(&game.team1_players, game.current_team1_artist) == caller_address;
+        // Check if caller is a member of the game.
+        let is_team0_player = vector::contains(&game.team0_players, &caller_address);
+        let is_team1_player = vector::contains(&game.team1_players, &caller_address);
         
-        assert!(is_team0_artist || is_team1_artist, ENOT_ARTIST_TURN);
+        assert!(is_team0_player || is_team1_player, ENOT_ARTIST_TURN);
 
         // Check if current round is finished
         if (get_current_round_number(game) > 0) {
