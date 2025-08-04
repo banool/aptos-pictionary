@@ -49,7 +49,7 @@ function HomePage() {
               </h1>
               <p className="font-bouncy text-xl text-gray-700 mb-8 leading-relaxed">
                 Ready to unleash your creativity? Create a new canvas or join your friends 
-                in an artistic adventure! Let's paint some masterpieces together! 🌈
+                in artistic rivalry!
               </p>
               
               <div className="mb-8">
@@ -64,10 +64,18 @@ function HomePage() {
               </div>
               
               <div className="flex justify-center gap-4">
-                <div className="w-10 h-10 bg-studio-green rounded-full paint-blob animate-bounce paint-splatters"></div>
-                <div className="w-8 h-8 bg-studio-purple rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-12 h-12 bg-studio-orange rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-6 h-6 bg-studio-pink rounded-full paint-blob animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+                <div className="w-10 h-10 bg-studio-green rounded-full paint-blob animate-bounce relative">
+                  <div className="absolute top-2 left-2 w-3 h-3 bg-white rounded-full opacity-60"></div>
+                </div>
+                <div className="w-8 h-8 bg-studio-purple rounded-full paint-blob animate-bounce relative" style={{ animationDelay: '0.1s' }}>
+                  <div className="absolute top-1 left-1 w-2 h-2 bg-white rounded-full opacity-60"></div>
+                </div>
+                <div className="w-12 h-12 bg-studio-orange rounded-full paint-blob animate-bounce relative" style={{ animationDelay: '0.2s' }}>
+                  <div className="absolute top-2 left-2 w-4 h-4 bg-white rounded-full opacity-60"></div>
+                </div>
+                <div className="w-6 h-6 bg-studio-pink rounded-full paint-blob animate-bounce relative" style={{ animationDelay: '0.3s' }}>
+                  <div className="absolute top-1 left-1 w-2 h-2 bg-white rounded-full opacity-60"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -103,19 +111,7 @@ function HomePage() {
 // Game page component
 function GamePage() {
   const activeAccount = useAuthStore(state => state.activeAccount);
-  const navigate = useNavigate();
   const { gameAddress } = useParams<{ gameAddress: string }>();
-  const [showCreateModal, setShowCreateModal] = useState(false);
-
-  const handleCreateGame = () => {
-    setShowCreateModal(true);
-  };
-
-  const handleGameCreated = (gameAddress: AccountAddress) => {
-    setShowCreateModal(false);
-    // Navigate to the new game URL
-    navigate(`/${gameAddress.toString()}`);
-  };
 
   // Validate the game address
   let validGameAddress: AccountAddress | null = null;
@@ -129,7 +125,7 @@ function GamePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header onCreateGame={activeAccount ? handleCreateGame : undefined} />
+      <Header showBackButton={true} />
       <div className="flex-1 flex">
         {!activeAccount ? (
           <div className="flex items-center justify-center flex-col flex-1 p-8">
@@ -163,7 +159,7 @@ function GamePage() {
                 Let's go back to the studio and find another canvas!
               </p>
               <button 
-                onClick={() => navigate("/")} 
+                onClick={() => window.location.href = "/"} 
                 className="palette-button bg-studio-blue hover:bg-studio-purple text-white font-bold px-6 py-3 rounded-full transition-all duration-300 fun-shadow"
               >
                 🏠 Back to Studio
@@ -174,12 +170,6 @@ function GamePage() {
           <GameInterface gameAddress={validGameAddress} />
         )}
       </div>
-
-      <CreateGameModal
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onGameCreated={handleGameCreated}
-      />
     </div>
   );
 }

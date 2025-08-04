@@ -354,7 +354,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             </div>
             <h4 className="font-bubbly text-lg text-gray-800 paint-splatters">The secret word was...</h4>
           </div>
-          <div className="text-4xl font-bubbly text-center py-4 bg-gradient-to-r from-studio-purple to-studio-blue text-white rounded-2xl fun-shadow polka-dots">
+          <div className="text-4xl font-bubbly text-center py-4 bg-gradient-to-r from-studio-purple to-studio-blue text-black rounded-2xl fun-shadow polka-dots">
             {roundState.word} 🎉
           </div>
         </div>
@@ -425,9 +425,9 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
             <h4 className="font-playful text-lg text-green-600">Mystery Solved!</h4>
           </div>
           <div className="text-center p-3 bg-green-100 rounded-2xl">
-            <p className="text-green-700 font-bold mb-1">🏆 Your team cracked the code!</p>
+            <p className="text-green-700 font-bold mb-1">Your team cracked the code</p>
             <p className="text-sm text-green-600">
-              Sit back and watch other teams figure it out! 🍿
+              Sit back and watch other teams figure it out! ✨
             </p>
           </div>
         </div>

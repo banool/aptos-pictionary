@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { LoginButton } from "@/components/LoginButton";
 import { AptBalanceDisplay } from "@/components/AptBalanceDisplay";
-import { Plus, Palette, Paintbrush2 } from "lucide-react";
+import { Plus, Palette, Paintbrush2, Home } from "lucide-react";
 
 interface HeaderProps {
   onCreateGame?: () => void;
+  showBackButton?: boolean;
 }
 
-export function Header({ onCreateGame }: HeaderProps) {
+export function Header({ onCreateGame, showBackButton }: HeaderProps) {
   return (
     <div className="studio-header relative z-10">
       <div className="flex items-center justify-between px-6 py-4 max-w-screen-xl mx-auto w-full flex-wrap relative z-10">
@@ -24,6 +25,15 @@ export function Header({ onCreateGame }: HeaderProps) {
         </div>
 
         <div className="flex gap-3 items-center flex-wrap">
+          {showBackButton && (
+            <Button 
+              onClick={() => window.location.href = '/'} 
+              className="palette-button bg-studio-blue hover:bg-studio-purple text-white font-semibold px-4 py-2 flex items-center gap-2 border-0 hover:scale-105 transition-all duration-300"
+            >
+              <Home size={18} className="paint-drip" />
+              <span className="font-bold">Home</span>
+            </Button>
+          )}
           <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-1 shadow-lg">
             <AptBalanceDisplay />
           </div>
