@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Palette, Eraser, Clock } from "lucide-react";
+import { Palette, /* Eraser, */ Clock } from "lucide-react";
 import { CanvasDelta } from "@/utils/surf";
 import { getCanvas } from "@/view-functions/gameView";
 import { aptos } from "@/utils/aptos";
@@ -330,6 +330,7 @@ export function GameCanvas({
     }
   }, [pendingDeltas]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -360,7 +361,7 @@ export function GameCanvas({
           onMouseLeave={canDraw ? () => setIsDrawing(false) : undefined}
         />
         
-        {!canDraw && userTeam !== null && (
+        {!canDraw && userTeam !== null && gameStarted && !roundFinished && (
           <div className="absolute top-2 left-2 bg-blue-100 border border-blue-300 px-3 py-1 rounded-md shadow-sm">
             <p className="text-xs font-medium text-blue-800">
               👀 Watching your team's artist draw
@@ -454,8 +455,8 @@ export function GameCanvas({
             )}
           </div>
 
-          {/* Clear Button */}
-          <Button
+          {/* Clear Button - Hidden for now */}
+          {/* <Button
             variant="outline"
             size="sm"
             onClick={clearCanvas}
@@ -463,7 +464,7 @@ export function GameCanvas({
           >
             <Eraser size={16} />
             Clear
-          </Button>
+          </Button> */}
         </div>
       )}
     </div>

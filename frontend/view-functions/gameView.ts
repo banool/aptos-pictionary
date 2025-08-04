@@ -47,7 +47,16 @@ export const getGame = async (aptos: Aptos, gameAddress: AccountAddress): Promis
       typeArguments: [],
     });
 
-    return {
+    console.log("Raw game data from contract:", {
+      team0Score,
+      team1Score,
+      currentRound,
+      started,
+      finished,
+      gameAddress: gameAddress.toString()
+    });
+
+    const gameState = {
       creator: AccountAddress.from(creator as string),
       team0Players: (team0Players as string[]).map((addr) => AccountAddress.from(addr)),
       team1Players: (team1Players as string[]).map((addr) => AccountAddress.from(addr)),
@@ -66,6 +75,14 @@ export const getGame = async (aptos: Aptos, gameAddress: AccountAddress): Promis
       canvasHeight: Number(canvasHeight),
       roundDuration: Number(roundDuration),
     };
+
+    console.log("Processed game state:", {
+      team0Score: gameState.team0Score,
+      team1Score: gameState.team1Score,
+      currentRound: gameState.currentRound
+    });
+
+    return gameState;
   } catch (error) {
     console.error("Failed to get game state:", error);
     throw new Error("Failed to fetch game state");
@@ -269,7 +286,15 @@ export const getRoundHistory = async (
         displayWord: word, 
         finished: isFinished,
         startTime: round.start_time,
-        duration: round.duration_seconds
+        duration: round.duration_seconds,
+        team0Points,
+        team1Points,
+        team0TotalScore,
+        team1TotalScore,
+        team0Guessed: round.team0_guessed,
+        team1Guessed: round.team1_guessed,
+        team0GuessTime: round.team0_guess_time,
+        team1GuessTime: round.team1_guess_time
       });
 
       roundResults.push({

@@ -5,7 +5,7 @@
 // Do not change the ABI manually.
 
 export const PICTIONARY_ABI = {
-  "address": "0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1",
+  "address": "0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd",
   "name": "pictionary",
   "friends": [],
   "exposed_functions": [
@@ -29,6 +29,27 @@ export const PICTIONARY_ABI = {
       "return": []
     },
     {
+      "name": "create_game_inner",
+      "visibility": "public",
+      "is_entry": false,
+      "is_view": false,
+      "generic_type_params": [],
+      "params": [
+        "&signer",
+        "vector<address>",
+        "vector<address>",
+        "0x1::string::String",
+        "0x1::string::String",
+        "u64",
+        "u16",
+        "u16",
+        "u64"
+      ],
+      "return": [
+        "address"
+      ]
+    },
+    {
       "name": "get_canvas",
       "visibility": "public",
       "is_entry": false,
@@ -40,7 +61,7 @@ export const PICTIONARY_ABI = {
         "u64"
       ],
       "return": [
-        "0x1::ordered_map::OrderedMap<u16, 0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::Color>"
+        "0x1::ordered_map::OrderedMap<u16, 0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::Color>"
       ]
     },
     {
@@ -117,7 +138,7 @@ export const PICTIONARY_ABI = {
         "address"
       ],
       "return": [
-        "vector<0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::RoundSummary>"
+        "vector<0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::RoundSummary>"
       ]
     },
     {
@@ -197,7 +218,7 @@ export const PICTIONARY_ABI = {
       "fields": [
         {
           "name": "pixels",
-          "type": "0x1::ordered_map::OrderedMap<u16, 0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::Color>"
+          "type": "0x1::ordered_map::OrderedMap<u16, 0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::Color>"
         },
         {
           "name": "width",
@@ -230,7 +251,7 @@ export const PICTIONARY_ABI = {
         },
         {
           "name": "color",
-          "type": "0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::Color"
+          "type": "0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::Color"
         }
       ]
     },
@@ -262,7 +283,7 @@ export const PICTIONARY_ABI = {
         },
         {
           "name": "deltas",
-          "type": "vector<0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::CanvasDelta>"
+          "type": "vector<0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::CanvasDelta>"
         },
         {
           "name": "timestamp",
@@ -320,24 +341,12 @@ export const PICTIONARY_ABI = {
           "type": "u64"
         },
         {
-          "name": "team0_score",
-          "type": "u64"
-        },
-        {
-          "name": "team1_score",
-          "type": "u64"
-        },
-        {
           "name": "target_score",
           "type": "u64"
         },
         {
-          "name": "current_round",
-          "type": "u64"
-        },
-        {
           "name": "rounds",
-          "type": "vector<0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::Round>"
+          "type": "vector<0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::Round>"
         },
         {
           "name": "started",
@@ -492,11 +501,11 @@ export const PICTIONARY_ABI = {
         },
         {
           "name": "team0_canvas",
-          "type": "0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::Canvas"
+          "type": "0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::Canvas"
         },
         {
           "name": "team1_canvas",
-          "type": "0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary::Canvas"
+          "type": "0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary::Canvas"
         },
         {
           "name": "team0_guessed",
@@ -513,6 +522,10 @@ export const PICTIONARY_ABI = {
         {
           "name": "team1_guess_time",
           "type": "0x1::option::Option<u64>"
+        },
+        {
+          "name": "processed",
+          "type": "bool"
         }
       ]
     },

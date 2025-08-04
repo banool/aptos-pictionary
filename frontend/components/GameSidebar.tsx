@@ -41,6 +41,45 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   const [isSubmittingGuess, setIsSubmittingGuess] = useState(false);
   const { toast } = useToast();
 
+  // Calculate current scores including unprocessed round points
+  const calculateCurrentScores = (): { team0Score: number; team1Score: number } => {
+    let team0Score = gameState.team0Score; // Start with processed scores from contract
+    let team1Score = gameState.team1Score;
+
+    // Add points from current unprocessed round if applicable
+    if (roundState && gameState.started && !gameState.finished) {
+      // Check if current round has ended but might not be processed yet
+      const currentTime = Date.now() / 1000;
+      const roundEndTime = roundState.startTime + roundState.durationSeconds;
+      const roundTimeExpired = currentTime > roundEndTime;
+      const bothTeamsGuessed = roundState.team0Guessed && roundState.team1Guessed;
+      
+      // If round should be finished (time expired or both guessed), calculate potential points
+      if (roundTimeExpired || bothTeamsGuessed || roundState.finished) {
+        if (roundState.team0Guessed && roundState.team1Guessed) {
+          // Both teams guessed - first gets 2 points, second gets 1
+          if (roundState.team0GuessTime !== null && roundState.team1GuessTime !== null) {
+            if (roundState.team0GuessTime <= roundState.team1GuessTime) {
+              team0Score += 2;
+              team1Score += 1;
+            } else {
+              team0Score += 1;
+              team1Score += 2;
+            }
+          }
+        } else if (roundState.team0Guessed) {
+          team0Score += 2;
+        } else if (roundState.team1Guessed) {
+          team1Score += 2;
+        }
+      }
+    }
+
+    return { team0Score, team1Score };
+  };
+
+  const currentScores = calculateCurrentScores();
+
   // Load round history from blockchain
   useEffect(() => {
     const loadRoundHistory = async () => {
@@ -192,7 +231,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
   };
 
   return (
-    <div className="w-80 border-r bg-gray-50 flex flex-col">
+    <div className="w-80 border-r bg-gray-50 flex flex-col h-screen max-h-screen">
       {/* Game Info Header */}
       <div className="p-4 border-b bg-white">
         <h3 className="font-semibold text-lg mb-2">Game Status</h3>
@@ -216,7 +255,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
         <div className={`mb-4 p-3 rounded-lg ${userTeam === 0 ? "bg-blue-100 border-2 border-blue-300" : "bg-gray-100"}`}>
           <div className="flex justify-between items-center mb-2">
             <span className="font-medium">{gameState.team0Name}</span>
-            <span className="text-xl font-bold">{gameState.team0Score}</span>
+            <span className="text-xl font-bold">{currentScores.team0Score}</span>
           </div>
           <div className="space-y-1">
             {gameState.team0Players.map((player, index) => (
@@ -235,7 +274,7 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
         <div className={`p-3 rounded-lg ${userTeam === 1 ? "bg-red-100 border-2 border-red-300" : "bg-gray-100"}`}>
           <div className="flex justify-between items-center mb-2">
             <span className="font-medium">{gameState.team1Name}</span>
-            <span className="text-xl font-bold">{gameState.team1Score}</span>
+            <span className="text-xl font-bold">{currentScores.team1Score}</span>
           </div>
           <div className="space-y-1">
             {gameState.team1Players.map((player, index) => (
@@ -309,25 +348,27 @@ export function GameSidebar({ gameState, roundState, userTeam, getDisplayName, g
       {/* Remove duplicate next round button - it's already in GameStatus */}
 
       {/* Round History */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-4 min-h-0">
         <h4 className="font-semibold mb-3">Round History</h4>
-        <div className="space-y-3">
-          {roundResults.length === 0 ? (
-            <p className="text-sm text-gray-500">No rounds completed yet</p>
-          ) : (
-            roundResults.slice().reverse().map((result) => (
-              <div key={result.roundNumber} className="bg-white p-3 rounded border">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">Round {result.roundNumber}</span>
-                  <span className="text-sm text-gray-500">"{result.word}"</span>
+        <div className="h-full max-h-96 overflow-y-auto">
+          <div className="space-y-3">
+            {roundResults.length === 0 ? (
+              <p className="text-sm text-gray-500">No rounds completed yet</p>
+            ) : (
+              roundResults.slice().reverse().map((result) => (
+                <div key={result.roundNumber} className="bg-white p-3 rounded border">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium">Round {result.roundNumber}</span>
+                    <span className="text-sm text-gray-500">"{result.word}"</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>{gameState.team0Name}: +{result.team0Points} ({result.team0TotalScore})</span>
+                    <span>{gameState.team1Name}: +{result.team1Points} ({result.team1TotalScore})</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                                  <span>{gameState.team0Name}: +{result.team0Points} ({result.team0TotalScore})</span>
-                <span>{gameState.team1Name}: +{result.team1Points} ({result.team1TotalScore})</span>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
 

@@ -106,6 +106,8 @@ module pictionary::pictionary {
         team0_guess_time: Option<u64>,
         /// Timestamp when team 1 guessed (if they did)
         team1_guess_time: Option<u64>,
+        /// Whether this round has been processed for scoring
+        processed: bool,
     }
 
     /// Main game state stored as an Aptos object
@@ -125,14 +127,8 @@ module pictionary::pictionary {
         current_team0_artist: u64,
         /// Index of current artist in team1_players vector
         current_team1_artist: u64,
-        /// Current score for team 0
-        team0_score: u64,
-        /// Current score for team 1
-        team1_score: u64,
         /// Score needed to win the game
         target_score: u64,
-        /// Number of rounds played (starts at 0)
-        current_round: u64,
         /// History of all rounds played
         rounds: vector<Round>,
         /// Whether the game has been started by creator
@@ -295,8 +291,6 @@ module pictionary::pictionary {
         });
     }
 
-    /// Creates a new pictionary game with the specified teams and settings
-    /// Game is created but not started - creator must call start_game() separately
     public entry fun create_game(
         creator: &signer,
         team0_players: vector<address>,
@@ -308,6 +302,23 @@ module pictionary::pictionary {
         canvas_height: u16,
         round_duration: u64,
     ) {
+        create_game_inner(creator, team0_players, team1_players, team0_name, team1_name, target_score, canvas_width, canvas_height, round_duration);
+    }
+
+    /// Creates a new pictionary game with the specified teams and settings
+    /// Game is created but not started - creator must call start_game() separately
+    /// Returns the address of the created game object
+    public fun create_game_inner(
+        creator: &signer,
+        team0_players: vector<address>,
+        team1_players: vector<address>,
+        team0_name: String,
+        team1_name: String,
+        target_score: u64,
+        canvas_width: u16,
+        canvas_height: u16,
+        round_duration: u64,
+    ): address {
         // Validate teams have at least 2 players each
         assert!(vector::length(&team0_players) >= 2, ETEAM_TOO_SMALL);
         assert!(vector::length(&team1_players) >= 2, ETEAM_TOO_SMALL);
@@ -326,10 +337,7 @@ module pictionary::pictionary {
             team1_name: if (string::length(&team1_name) == 0) string::utf8(b"Team 2") else team1_name,
             current_team0_artist: 0,
             current_team1_artist: 0,
-            team0_score: 0,
-            team1_score: 0,
             target_score,
-            current_round: 0,
             rounds: vector::empty(),
             started: false,
             finished: false,
@@ -350,6 +358,64 @@ module pictionary::pictionary {
         });
 
         move_to(&game_signer, game);
+        game_address
+    }
+
+    /// Helper function to derive team 0's current score from completed rounds
+    fun get_team0_score(game: &Game): u64 {
+        let total_score = 0;
+        let i = 0;
+        while (i < vector::length(&game.rounds)) {
+            let round = vector::borrow(&game.rounds, i);
+            if (round.processed) {
+                // Team 0 gets points based on timing if they guessed correctly
+                if (round.team0_guessed) {
+                    let points = if (round.team1_guessed) {
+                        // Both teams guessed - points based on timing
+                        let team0_time = *option::borrow(&round.team0_guess_time);
+                        let team1_time = *option::borrow(&round.team1_guess_time);
+                        if (team0_time <= team1_time) 2 else 1
+                    } else {
+                        // Only team 0 guessed
+                        2
+                    };
+                    total_score = total_score + points;
+                };
+            };
+            i = i + 1;
+        };
+        total_score
+    }
+
+    /// Helper function to derive team 1's current score from completed rounds
+    fun get_team1_score(game: &Game): u64 {
+        let total_score = 0;
+        let i = 0;
+        while (i < vector::length(&game.rounds)) {
+            let round = vector::borrow(&game.rounds, i);
+            if (round.processed) {
+                // Team 1 gets points based on timing if they guessed correctly
+                if (round.team1_guessed) {
+                    let points = if (round.team0_guessed) {
+                        // Both teams guessed - points based on timing
+                        let team0_time = *option::borrow(&round.team0_guess_time);
+                        let team1_time = *option::borrow(&round.team1_guess_time);
+                        if (team1_time < team0_time) 2 else 1
+                    } else {
+                        // Only team 1 guessed
+                        2
+                    };
+                    total_score = total_score + points;
+                };
+            };
+            i = i + 1;
+        };
+        total_score
+    }
+
+    /// Helper function to derive current round number from rounds vector
+    fun get_current_round_number(game: &Game): u64 {
+        vector::length(&game.rounds)
     }
 
     #[randomness]
@@ -422,7 +488,7 @@ module pictionary::pictionary {
 
         // Create new round
         let round = Round {
-            round_number: game.current_round,
+            round_number: get_current_round_number(game),
             word,
             start_time: timestamp::now_seconds(),
             duration_seconds: game.round_duration,
@@ -432,6 +498,7 @@ module pictionary::pictionary {
             team1_guessed: false,
             team0_guess_time: option::none(),
             team1_guess_time: option::none(),
+            processed: false,
         };
 
         vector::push_back(&mut game.rounds, round);
@@ -443,14 +510,14 @@ module pictionary::pictionary {
         // Emit round started event
         event::emit(RoundStarted {
             game_address,
-            round_number: game.current_round,
+            round_number: get_current_round_number(game),
             word,
             team0_artist,
             team1_artist,
             start_time: timestamp::now_seconds(),
         });
 
-        game.current_round = game.current_round + 1;
+        // Round number is now derived from rounds vector length - no need to update manually
     }
 
     /// Submits drawing updates to the canvas (only current artist can do this)
@@ -479,7 +546,7 @@ module pictionary::pictionary {
         assert!(team == 0 || team == 1, EINVALID_TEAM);
 
         let artist_address = signer::address_of(artist);
-        let current_round_index = game.current_round - 1;
+        let current_round_index = get_current_round_number(game) - 1;
         let round = vector::borrow_mut(&mut game.rounds, current_round_index);
         
         // Check if round is already finished
@@ -546,7 +613,7 @@ module pictionary::pictionary {
         assert!(!game.finished, EGAME_FINISHED);
 
         let guesser_address = signer::address_of(guesser);
-        let current_round_index = game.current_round - 1;
+        let current_round_index = get_current_round_number(game) - 1;
         
         // Determine which team the guesser is on first (before borrowing round mutably)
         let team = get_player_team(game, guesser_address);
@@ -638,29 +705,39 @@ module pictionary::pictionary {
     /// Calculates scoring based on who guessed correctly and when
     fun finish_round(game_address: address) acquires Game {
         let game = borrow_global_mut<Game>(game_address);
-        let current_round_index = game.current_round - 1;
+        let current_round_index = get_current_round_number(game) - 1;
         let round = vector::borrow_mut(&mut game.rounds, current_round_index);
         
-        // Check if already processed (avoid double processing)
-        if (is_round_finished(round)) {
-            return // Already finished
+        // Check if already processed (prevent double processing)
+        if (round.processed) {
+            return
         };
-
+        
+        // Mark as processed
+        round.processed = true;
+        
         // Calculate points
         let team0_points = 0u64;
         let team1_points = 0u64;
 
         if (round.team0_guessed && round.team1_guessed) {
             // Both teams guessed - first gets 2 points, second gets 1
-            let team0_time = option::extract(&mut round.team0_guess_time);
-            let team1_time = option::extract(&mut round.team1_guess_time);
-            
-            if (team0_time <= team1_time) {
-                team0_points = 2;
-                team1_points = 1;
+            // Safely check if guess times exist before borrowing
+            if (option::is_some(&round.team0_guess_time) && option::is_some(&round.team1_guess_time)) {
+                let team0_time = *option::borrow(&round.team0_guess_time);
+                let team1_time = *option::borrow(&round.team1_guess_time);
+                
+                if (team0_time <= team1_time) {
+                    team0_points = 2;
+                    team1_points = 1;
+                } else {
+                    team0_points = 1;
+                    team1_points = 2;
+                };
             } else {
+                // Fallback: if guess times are missing, give both teams 1 point
                 team0_points = 1;
-                team1_points = 2;
+                team1_points = 1;
             };
         } else if (round.team0_guessed) {
             team0_points = 2;
@@ -668,40 +745,46 @@ module pictionary::pictionary {
             team1_points = 2;
         };
 
-        // Update scores
-        game.team0_score = game.team0_score + team0_points;
-        game.team1_score = game.team1_score + team1_points;
+        // Extract round word before calling score functions to avoid borrow conflicts
+        let round_word = round.word;
+        
+        // Scores are now derived from round results - no need to store them separately
+        // Get current derived scores after processing this round
+        let team0_total_score = get_team0_score(game);
+        let team1_total_score = get_team1_score(game);
 
         // Emit round finished event
         event::emit(RoundFinished {
             game_address,
             round_number: current_round_index,
-            word: round.word,
+            word: round_word,
             team0_points_earned: team0_points,
             team1_points_earned: team1_points,
-            team0_total_score: game.team0_score,
-            team1_total_score: game.team1_score,
+            team0_total_score,
+            team1_total_score,
         });
 
+        // Always rotate artists for next round (ensures proper advancement)
+        game.current_team0_artist = (game.current_team0_artist + 1) % vector::length(&game.team0_players);
+        game.current_team1_artist = (game.current_team1_artist + 1) % vector::length(&game.team1_players);
+
         // Check if game is finished
-        if (game.team0_score >= game.target_score || game.team1_score >= game.target_score) {
+        if (team0_total_score >= game.target_score || team1_total_score >= game.target_score) {
             game.finished = true;
-            game.winner = if (game.team0_score >= game.team1_score) {
+            game.winner = if (team0_total_score >= team1_total_score) {
                 option::some(0)
             } else {
                 option::some(1)
             };
 
+            // Use borrow instead of extract to avoid consuming the option
+            let winner_team = *option::borrow(&game.winner);
             event::emit(GameFinished {
                 game_address,
-                winner: option::extract(&mut game.winner),
-                final_team0_score: game.team0_score,
-                final_team1_score: game.team1_score,
+                winner: winner_team,
+                final_team0_score: team0_total_score,
+                final_team1_score: team1_total_score,
             });
-        } else {
-            // Rotate artists for next round
-            game.current_team0_artist = (game.current_team0_artist + 1) % vector::length(&game.team0_players);
-            game.current_team1_artist = (game.current_team1_artist + 1) % vector::length(&game.team1_players);
         };
     }
 
@@ -722,8 +805,8 @@ module pictionary::pictionary {
         assert!(is_team0_artist || is_team1_artist, ENOT_ARTIST_TURN);
 
         // Check if current round is finished
-        if (game.current_round > 0) {
-            let current_round_index = game.current_round - 1;
+        if (get_current_round_number(game) > 0) {
+            let current_round_index = get_current_round_number(game) - 1;
             let round = vector::borrow(&game.rounds, current_round_index);
             assert!(is_round_finished(round), EROUND_NOT_ACTIVE);
         };
@@ -764,10 +847,10 @@ module pictionary::pictionary {
             game.team1_name,
             game.current_team0_artist,
             game.current_team1_artist,
-            game.team0_score,
-            game.team1_score,
+            get_team0_score(game),
+            get_team1_score(game),
             game.target_score,
-            game.current_round,
+            get_current_round_number(game),
             game.started,
             game.finished,
             game.winner,
@@ -792,11 +875,11 @@ module pictionary::pictionary {
         Option<u64>, // team1_guess_time
     ) acquires Game {
         let game = borrow_global<Game>(game_address);
-        if (game.current_round == 0) {
+        if (get_current_round_number(game) == 0) {
             return (0, string::utf8(b""), 0, 0, false, false, false, option::none(), option::none())
         };
 
-        let current_round_index = game.current_round - 1;
+        let current_round_index = get_current_round_number(game) - 1;
         let round = vector::borrow(&game.rounds, current_round_index);
         
         let round_finished = is_round_finished(round);
@@ -880,11 +963,11 @@ module pictionary::pictionary {
     /// Returns the word for the current round (only if you're an artist or round is finished)
     public fun get_current_word_for_artist(game_address: address, player: address): String acquires Game {
         let game = borrow_global<Game>(game_address);
-        if (game.current_round == 0) {
+        if (get_current_round_number(game) == 0) {
             return string::utf8(b"")
         };
 
-        let current_round_index = game.current_round - 1;
+        let current_round_index = get_current_round_number(game) - 1;
         let round = vector::borrow(&game.rounds, current_round_index);
         
         // Return word if round is finished or if player is current artist
@@ -910,5 +993,101 @@ module pictionary::pictionary {
         // Only the original deployer can update the word list
         assert!(signer::address_of(deployer) == @pictionary, ENOT_AUTHORIZED);
         word_list.words = new_words;
+    }
+
+    #[test_only]
+    /// Test-only function to start a game with a fixed word (no randomness)
+    public entry fun start_game_test(creator: &signer, game_address: address, test_word: String) acquires Game {
+        let game = borrow_global_mut<Game>(game_address);
+        assert!(game.creator == signer::address_of(creator), ENOT_AUTHORIZED);
+        assert!(!game.started, EGAME_ALREADY_STARTED);
+        assert!(!game.finished, EGAME_FINISHED);
+
+        game.started = true;
+        start_new_round_with_word(game_address, test_word);
+    }
+
+    #[test_only]
+    /// Test-only function to start next round with a fixed word (no randomness)
+    public entry fun next_round_test(caller: &signer, game_address: address, test_word: String) acquires Game {
+        let game = borrow_global<Game>(game_address);
+        assert!(game.started, EGAME_NOT_STARTED);
+        assert!(!game.finished, EGAME_FINISHED);
+
+        let caller_address = signer::address_of(caller);
+        
+        // Check if caller is any player in either team (more lenient for testing)
+        let is_team0_player = vector::contains(&game.team0_players, &caller_address);
+        let is_team1_player = vector::contains(&game.team1_players, &caller_address);
+        
+        assert!(is_team0_player || is_team1_player, ENOT_ARTIST_TURN);
+
+        // Check if current round is finished
+        if (get_current_round_number(game) > 0) {
+            let current_round_index = get_current_round_number(game) - 1;
+            let round = vector::borrow(&game.rounds, current_round_index);
+            assert!(is_round_finished(round), EROUND_NOT_ACTIVE);
+        };
+
+        // Finish the current round in case it hasn't been finished yet
+        finish_round(game_address);
+
+        start_new_round_with_word(game_address, test_word);
+    }
+
+    #[test_only]
+    /// Internal test helper to start a new round with a specific word
+    fun start_new_round_with_word(game_address: address, word: String) acquires Game {
+        let game = borrow_global_mut<Game>(game_address);
+        assert!(game.started, EGAME_NOT_STARTED);
+        assert!(!game.finished, EGAME_FINISHED);
+
+        // Create new canvases for this round
+        let team0_canvas = Canvas {
+            pixels: ordered_map::new(),
+            width: game.canvas_width,
+            height: game.canvas_height,
+            last_updated: timestamp::now_seconds(),
+        };
+
+        let team1_canvas = Canvas {
+            pixels: ordered_map::new(),
+            width: game.canvas_width,
+            height: game.canvas_height,
+            last_updated: timestamp::now_seconds(),
+        };
+
+        // Create new round with provided word
+        let round = Round {
+            round_number: get_current_round_number(game),
+            word,
+            start_time: timestamp::now_seconds(),
+            duration_seconds: game.round_duration,
+            team0_canvas,
+            team1_canvas,
+            team0_guessed: false,
+            team1_guessed: false,
+            team0_guess_time: option::none(),
+            team1_guess_time: option::none(),
+            processed: false,
+        };
+
+        vector::push_back(&mut game.rounds, round);
+
+        // Get current artists
+        let team0_artist = *vector::borrow(&game.team0_players, game.current_team0_artist);
+        let team1_artist = *vector::borrow(&game.team1_players, game.current_team1_artist);
+
+        // Emit round started event
+        event::emit(RoundStarted {
+            game_address,
+            round_number: get_current_round_number(game),
+            word,
+            team0_artist,
+            team1_artist,
+            start_time: timestamp::now_seconds(),
+        });
+
+        // Round number is now derived from rounds vector length - no need to update manually
     }
 }

@@ -5,6 +5,7 @@ import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_AUTO_DISMISS_DELAY = 3000;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -52,6 +53,7 @@ interface State {
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+const autoDismissTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
@@ -67,6 +69,22 @@ const addToRemoveQueue = (toastId: string) => {
   }, TOAST_REMOVE_DELAY);
 
   toastTimeouts.set(toastId, timeout);
+};
+
+const addToAutoDismissQueue = (toastId: string) => {
+  if (autoDismissTimeouts.has(toastId)) {
+    return;
+  }
+
+  const timeout = setTimeout(() => {
+    autoDismissTimeouts.delete(toastId);
+    dispatch({
+      type: "DISMISS_TOAST",
+      toastId: toastId,
+    });
+  }, TOAST_AUTO_DISMISS_DELAY);
+
+  autoDismissTimeouts.set(toastId, timeout);
 };
 
 export const reducer = (state: State, action: Action): State => {
@@ -86,12 +104,21 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action;
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
+      // Clear auto-dismiss timeouts when manually dismissing
       if (toastId) {
+        const autoDismissTimeout = autoDismissTimeouts.get(toastId);
+        if (autoDismissTimeout) {
+          clearTimeout(autoDismissTimeout);
+          autoDismissTimeouts.delete(toastId);
+        }
         addToRemoveQueue(toastId);
       } else {
         state.toasts.forEach((toast) => {
+          const autoDismissTimeout = autoDismissTimeouts.get(toast.id);
+          if (autoDismissTimeout) {
+            clearTimeout(autoDismissTimeout);
+            autoDismissTimeouts.delete(toast.id);
+          }
           addToRemoveQueue(toast.id);
         });
       }
@@ -108,17 +135,27 @@ export const reducer = (state: State, action: Action): State => {
         ),
       };
     }
-    case "REMOVE_TOAST":
+    case "REMOVE_TOAST": {
       if (action.toastId === undefined) {
+        // Clear all auto-dismiss timeouts
+        autoDismissTimeouts.forEach((timeout) => clearTimeout(timeout));
+        autoDismissTimeouts.clear();
         return {
           ...state,
           toasts: [],
         };
       }
+      // Clear specific auto-dismiss timeout
+      const autoDismissTimeout = autoDismissTimeouts.get(action.toastId);
+      if (autoDismissTimeout) {
+        clearTimeout(autoDismissTimeout);
+        autoDismissTimeouts.delete(action.toastId);
+      }
       return {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.toastId),
       };
+    }
   }
 };
 
@@ -156,6 +193,9 @@ function toast({ ...props }: Toast) {
       },
     },
   });
+
+  // Start auto-dismiss timer
+  addToAutoDismissQueue(id);
 
   return {
     id: id,

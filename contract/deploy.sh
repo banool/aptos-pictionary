@@ -4,7 +4,7 @@ echo "=== Aptos Pictionary Contract Deployment ==="
 
 # Check if account is funded
 echo "Checking account balance..."
-ACCOUNT="0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1"
+ACCOUNT="0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd"
 echo "Account: $ACCOUNT"
 
 # Try to get balance - if account doesn't exist yet, it will return 0

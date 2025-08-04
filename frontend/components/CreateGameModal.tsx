@@ -45,7 +45,7 @@ export function CreateGameModal({
   ]);
   const [targetScore, setTargetScore] = useState("11");
   const [canvasSize, setCanvasSize] = useState("500");
-  const [roundDuration, setRoundDuration] = useState("60");
+  const [roundDuration, setRoundDuration] = useState("45");
   const [isLoading, setIsLoading] = useState(false);
 
   // Use React Query to get user's ANS name with caching
@@ -93,7 +93,7 @@ export function CreateGameModal({
       ]);
       setTargetScore("11");
       setCanvasSize("500");
-      setRoundDuration("60");
+      setRoundDuration("45");
       setUserDisplayName("");
     }
   }, [open, account, userDisplayName]);

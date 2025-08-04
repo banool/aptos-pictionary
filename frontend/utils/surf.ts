@@ -3,7 +3,7 @@ import { Aptos, AccountAddress } from "@aptos-labs/ts-sdk";
 import { PICTIONARY_ABI } from "./abis";
 
 type ABITable = DefaultABITable & {
-  "0x30fb98688185215c8c129235b5e94a97a9b38f9c3e7510f011b0c9529d040dc1::pictionary": typeof PICTIONARY_ABI;
+  "0xb30fbc1c6be05c14a607a2ba45fe91ab70feb34ad8d1c65a72a918384bb545cd::pictionary": typeof PICTIONARY_ABI;
 };
 
 // Create the Surf client instance with proper receiver-style API
@@ -36,10 +36,10 @@ export interface GameState {
   team1Name: string;
   currentTeam0Artist: number;
   currentTeam1Artist: number;
-  team0Score: number;
-  team1Score: number;
+  team0Score: number;  // Now derived from completed rounds
+  team1Score: number;  // Now derived from completed rounds
   targetScore: number;
-  currentRound: number;
+  currentRound: number; // Now derived from rounds vector length
   started: boolean;
   finished: boolean;
   winner: number | null;
@@ -107,22 +107,23 @@ const COLOR_VARIANT_MAP: { [key: string]: number } = {
 };
 
 // Helper function to convert color variant object to numeric value
-const convertColorVariant = (colorVariant: any): number => {
+const convertColorVariant = (colorVariant: unknown): number => {
   if (typeof colorVariant === 'number') {
     return colorVariant;
   }
-  if (colorVariant && typeof colorVariant === 'object' && colorVariant.__variant__) {
-    const variantName = colorVariant.__variant__;
+  if (colorVariant && typeof colorVariant === 'object' && colorVariant !== null && '__variant__' in colorVariant) {
+    const variantName = (colorVariant as { __variant__: string }).__variant__;
     return COLOR_VARIANT_MAP[variantName] ?? 0; // Default to Black if unknown
   }
   return 0; // Default to Black
 };
 
 // Helper function to convert OrderedMap to Canvas format for UI rendering
-export const orderedMapToCanvas = (serializedMap: any): Canvas => {
+export const orderedMapToCanvas = (serializedMap: unknown): Canvas => {
   const canvas: Canvas = {};
-  if (serializedMap?.entries) {
-    serializedMap.entries.forEach(({ key, value }: { key: number, value: any }) => {
+  if (serializedMap && typeof serializedMap === 'object' && serializedMap !== null && 'entries' in serializedMap) {
+    const mapWithEntries = serializedMap as { entries: Array<{ key: number, value: unknown }> };
+    mapWithEntries.entries.forEach(({ key, value }) => {
       canvas[key] = convertColorVariant(value);
     });
   }
