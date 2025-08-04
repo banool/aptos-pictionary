@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { LoginButton } from "@/components/LoginButton";
 import { AptBalanceDisplay } from "@/components/AptBalanceDisplay";
-import { Plus, Palette, Paintbrush2, Home } from "lucide-react";
+import { Plus, Palette, Home } from "lucide-react";
 
 interface HeaderProps {
   onCreateGame?: () => void;

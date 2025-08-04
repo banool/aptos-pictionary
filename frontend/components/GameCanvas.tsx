@@ -332,20 +332,6 @@ export function GameCanvas({
     }
   }, [pendingDeltas]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, width, height);
-    setPendingDeltas([]);
-    lastSubmittedIndexRef.current = 0;
-  };
-
   // Calculate pending changes count for display
   const pendingChangesCount = Math.max(0, pendingDeltas.length - lastSubmittedIndexRef.current);
 
