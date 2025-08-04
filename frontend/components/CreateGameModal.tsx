@@ -43,6 +43,8 @@ export function CreateGameModal({
     { id: "3", address: "" },
     { id: "4", address: "" },
   ]);
+  const [team0Name, setTeam0Name] = useState("Team 1");
+  const [team1Name, setTeam1Name] = useState("Team 2");
   const [targetScore, setTargetScore] = useState("11");
   const [canvasSize, setCanvasSize] = useState("500");
   const [roundDuration, setRoundDuration] = useState("45");
@@ -91,6 +93,8 @@ export function CreateGameModal({
         { id: "3", address: "" },
         { id: "4", address: "" },
       ]);
+      setTeam0Name("Team 1");
+      setTeam1Name("Team 2");
       setTargetScore("11");
       setCanvasSize("500");
       setRoundDuration("45");
@@ -218,8 +222,8 @@ export function CreateGameModal({
       const payload = buildCreateGamePayload({
         team0Players: team0AccountAddresses,
         team1Players: team1AccountAddresses,
-        team0Name: "Team 1", // Default team names for now
-        team1Name: "Team 2",
+        team0Name: team0Name.trim() || "Team 1",
+        team1Name: team1Name.trim() || "Team 2",
         targetScore: parseInt(targetScore),
         canvasWidth: parseInt(canvasSize),
         canvasHeight: parseInt(canvasSize),
@@ -373,9 +377,51 @@ export function CreateGameModal({
                 </div>
                 <h3 className="font-bubbly text-2xl text-studio-purple crayon-scribble">Assemble Your Art Teams!</h3>
               </div>
+              
+              {/* Team Name Inputs */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="artist-card p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-studio-blue rounded-full paint-blob flex items-center justify-center">
+                      <span className="text-white font-bold">1</span>
+                    </div>
+                    <Label htmlFor="team0Name" className="font-playful text-lg text-studio-blue">
+                      🔵 Team Name
+                    </Label>
+                  </div>
+                  <Input
+                    id="team0Name"
+                    placeholder="Enter team name..."
+                    value={team0Name}
+                    onChange={(e) => setTeam0Name(e.target.value)}
+                    className="rounded-full border-2 border-gray-300 px-4 py-2 font-medium focus:border-studio-blue focus:ring-2 focus:ring-studio-blue focus:ring-opacity-20"
+                    maxLength={30}
+                  />
+                </div>
+                
+                <div className="artist-card p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-studio-pink rounded-full paint-blob flex items-center justify-center">
+                      <span className="text-white font-bold">2</span>
+                    </div>
+                    <Label htmlFor="team1Name" className="font-playful text-lg text-studio-pink">
+                      🩷 Team Name
+                    </Label>
+                  </div>
+                  <Input
+                    id="team1Name"
+                    placeholder="Enter team name..."
+                    value={team1Name}
+                    onChange={(e) => setTeam1Name(e.target.value)}
+                    className="rounded-full border-2 border-gray-300 px-4 py-2 font-medium focus:border-studio-pink focus:ring-2 focus:ring-studio-pink focus:ring-opacity-20"
+                    maxLength={30}
+                  />
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {renderTeamInputs(0, team0Players, "Team 1")}
-                {renderTeamInputs(1, team1Players, "Team 2")}
+                {renderTeamInputs(0, team0Players, team0Name)}
+                {renderTeamInputs(1, team1Players, team1Name)}
               </div>
             </div>
 
